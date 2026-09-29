@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.api.router import router
 from app.api.routes.health import DependencyCheck
 from app.core.config import Settings
+from app.core.problems import ProblemException, problem_exception_handler
 from app.db.session import build_engine, build_session_factory
 
 
@@ -24,6 +25,7 @@ def create_app(
     app.state.session_factory = session_factory or build_session_factory(
         build_engine(resolved_settings.database_url)
     )
+    app.add_exception_handler(ProblemException, problem_exception_handler)
 
     if resolved_settings.allowed_origins:
         app.add_middleware(

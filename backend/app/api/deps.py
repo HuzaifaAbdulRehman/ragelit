@@ -1,10 +1,12 @@
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import Annotated, NoReturn
 
-from fastapi import Depends, Header, HTTPException, Request
+from fastapi import Depends, Header, Request
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
+from app.core.problems import ProblemException
+from app.tenancy.policy import Action, role_allows
 from app.tenancy.scope import (
     AccessScope,
     PrincipalError,
@@ -25,15 +27,11 @@ AuthorizationHeader = Annotated[str | None, Header(alias="Authorization")]
 
 
 def _authentication_failed() -> NoReturn:
-    raise HTTPException(
-        status_code=401,
-        detail={
-            "type": "about:blank",
-            "title": "Unauthorized",
-            "status": 401,
-            "detail": "Authentication failed.",
-            "code": "authentication_failed",
-        },
+    raise ProblemException(
+        status=401,
+        code="authentication_failed",
+        title="Unauthorized",
+        detail="Authentication failed.",
         headers={"WWW-Authenticate": "Bearer"},
     )
 
@@ -52,8 +50,8 @@ AccessToken = Annotated[str, Depends(_access_token)]
 
 def get_current_principal(
     request: Request,
-    session: DatabaseSession,
     access_token: AccessToken,
+    session: DatabaseSession,
 ) -> RequestPrincipal:
     settings: Settings = request.app.state.settings
     try:
@@ -77,3 +75,17 @@ def build_access_scope(
 
 
 CurrentAccessScope = Annotated[AccessScope, Depends(build_access_scope)]
+
+
+def require_action(action: Action) -> Callable[..., RequestPrincipal]:
+    def guard(principal: CurrentPrincipal) -> RequestPrincipal:
+        if not role_allows(principal.role, action):
+            raise ProblemException(
+                status=403,
+                code="action_forbidden",
+                title="Forbidden",
+                detail="This action is not permitted.",
+            )
+        return principal
+
+    return guard

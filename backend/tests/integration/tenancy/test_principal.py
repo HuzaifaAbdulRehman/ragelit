@@ -7,7 +7,7 @@ from uuid import uuid4
 import pytest
 from alembic import command
 from alembic.config import Config
-from fastapi import Depends, FastAPI
+from fastapi import Depends
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine, create_engine, select, text
 from sqlalchemy.orm import Session, sessionmaker
@@ -18,6 +18,7 @@ from app.core.security import hash_password, issue_access_token
 from app.identity.models import RefreshSession, User
 from app.identity.schemas import LoginCommand
 from app.identity.service import login
+from app.main import create_app
 from app.tenancy.enums import Role
 from app.tenancy.models import Group, GroupMember, Membership, Organization
 from app.tenancy.scope import AccessScope, RequestPrincipal
@@ -126,9 +127,7 @@ def access_token(
 
 @pytest.fixture
 def client(session_factory: sessionmaker[Session]) -> Iterator[TestClient]:
-    app = FastAPI()
-    app.state.settings = _settings()
-    app.state.session_factory = session_factory
+    app = create_app(_settings(), session_factory=session_factory)
 
     @app.get("/principal")
     def principal_route(
@@ -229,7 +228,7 @@ def test_token_organization_must_match_the_current_session(
     response = client.get("/principal", headers=_headers(forged))
 
     assert response.status_code == 401
-    assert response.json()["detail"]["code"] == "authentication_failed"
+    assert response.json()["code"] == "authentication_failed"
 
 
 @pytest.mark.parametrize("invalid_state", ["session", "user", "membership"])
@@ -259,7 +258,7 @@ def test_inactive_current_state_invalidates_an_existing_token(
     response = client.get("/principal", headers=_headers(access_token))
 
     assert response.status_code == 401
-    assert response.json()["detail"]["code"] == "authentication_failed"
+    assert response.json()["code"] == "authentication_failed"
 
 
 def test_missing_membership_invalidates_an_existing_token(
@@ -278,4 +277,4 @@ def test_missing_membership_invalidates_an_existing_token(
     response = client.get("/principal", headers=_headers(access_token))
 
     assert response.status_code == 401
-    assert response.json()["detail"]["code"] == "authentication_failed"
+    assert response.json()["code"] == "authentication_failed"
