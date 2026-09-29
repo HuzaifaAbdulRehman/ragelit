@@ -1,5 +1,10 @@
 # RAGelit design
 
+> Superseded on 2026-09-29 by
+> [`2026-09-29-ragelit-security-design.md`](2026-09-29-ragelit-security-design.md)
+> after the product pivot from adaptive retrieval research to a multi-tenant
+> document assistant with access-control auditing.
+
 ## Purpose
 
 RAGelit is a document question-answering application and retrieval evaluation
