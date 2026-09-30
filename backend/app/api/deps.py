@@ -1,7 +1,9 @@
 from collections.abc import Callable, Iterator
 from typing import Annotated, NoReturn
+from uuid import UUID
 
-from fastapi import Depends, Header, Request
+from fastapi import Depends, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
@@ -23,7 +25,11 @@ def get_database_session(request: Request) -> Iterator[Session]:
 
 
 DatabaseSession = Annotated[Session, Depends(get_database_session)]
-AuthorizationHeader = Annotated[str | None, Header(alias="Authorization")]
+_bearer_scheme = HTTPBearer(auto_error=False)
+BearerCredentials = Annotated[
+    HTTPAuthorizationCredentials | None,
+    Depends(_bearer_scheme),
+]
 
 
 def _authentication_failed() -> NoReturn:
@@ -36,13 +42,13 @@ def _authentication_failed() -> NoReturn:
     )
 
 
-def _access_token(authorization: AuthorizationHeader = None) -> str:
-    if authorization is None:
+def _access_token(credentials: BearerCredentials = None) -> str:
+    if credentials is None or credentials.scheme.lower() != "bearer":
         _authentication_failed()
-    scheme, separator, token = authorization.partition(" ")
-    if scheme.lower() != "bearer" or not separator or not token.strip():
+    token = credentials.credentials.strip()
+    if not token:
         _authentication_failed()
-    return token.strip()
+    return token
 
 
 AccessToken = Annotated[str, Depends(_access_token)]
@@ -79,6 +85,30 @@ CurrentAccessScope = Annotated[AccessScope, Depends(build_access_scope)]
 
 def require_action(action: Action) -> Callable[..., RequestPrincipal]:
     def guard(principal: CurrentPrincipal) -> RequestPrincipal:
+        if not role_allows(principal.role, action):
+            raise ProblemException(
+                status=403,
+                code="action_forbidden",
+                title="Forbidden",
+                detail="This action is not permitted.",
+            )
+        return principal
+
+    return guard
+
+
+def require_organization_action(action: Action) -> Callable[..., RequestPrincipal]:
+    def guard(
+        organization_id: UUID,
+        principal: CurrentPrincipal,
+    ) -> RequestPrincipal:
+        if organization_id != principal.organization_id:
+            raise ProblemException(
+                status=404,
+                code="resource_not_found",
+                title="Not Found",
+                detail="The requested resource was not found.",
+            )
         if not role_allows(principal.role, action):
             raise ProblemException(
                 status=403,

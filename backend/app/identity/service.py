@@ -12,6 +12,7 @@ from app.identity.models import RefreshSession, User
 from app.identity.schemas import LoginCommand, LoginResult, RefreshResult
 from app.tenancy.models import Membership, Organization
 from app.tenancy.rls import set_refresh_token_context, set_request_context
+from app.tenancy.scope import RequestPrincipal
 
 _DUMMY_PASSWORD_HASH = hash_password("ragelit-invalid-login-placeholder")
 
@@ -197,3 +198,85 @@ def logout_refresh(
         )
         stored.revoked_at = now or datetime.now(UTC)
     session.commit()
+
+
+def switch_organization(
+    principal: RequestPrincipal,
+    target_id: UUID,
+    *,
+    session: Session,
+    settings: Settings,
+    now: datetime | None = None,
+) -> RefreshResult:
+    current_time = now or datetime.now(UTC)
+    current_session = session.scalar(
+        select(RefreshSession)
+        .where(
+            RefreshSession.id == principal.session_id,
+            RefreshSession.user_id == principal.user_id,
+            RefreshSession.organization_id == principal.organization_id,
+            RefreshSession.revoked_at.is_(None),
+            RefreshSession.expires_at > current_time,
+        )
+        .with_for_update()
+    )
+    if current_session is None:
+        raise AuthError("invalid_refresh")
+    target_membership = session.scalar(
+        select(Membership).where(
+            Membership.user_id == principal.user_id,
+            Membership.organization_id == target_id,
+            Membership.is_active.is_(True),
+        )
+    )
+    if target_membership is None:
+        raise AuthError("resource_not_found")
+    session.execute(
+        update(RefreshSession)
+        .where(RefreshSession.family_id == current_session.family_id)
+        .values(revoked_at=current_time)
+    )
+    set_request_context(
+        session,
+        user_id=principal.user_id,
+        organization_id=target_membership.organization_id,
+    )
+    target_membership = session.scalar(
+        select(Membership)
+        .where(
+            Membership.id == target_membership.id,
+            Membership.user_id == principal.user_id,
+            Membership.organization_id == target_id,
+            Membership.is_active.is_(True),
+        )
+        .with_for_update()
+    )
+    if target_membership is None:
+        raise AuthError("resource_not_found")
+    raw_token, token_hash = _new_refresh_token()
+    replacement = RefreshSession(
+        user_id=principal.user_id,
+        organization_id=target_membership.organization_id,
+        family_id=uuid4(),
+        token_hash=token_hash,
+        expires_at=current_time + timedelta(days=settings.refresh_session_days),
+    )
+    session.add(replacement)
+    session.flush()
+    replacement_id = replacement.id
+    refresh_expires_at = replacement.expires_at
+    access_token = issue_access_token(
+        principal.user_id,
+        target_membership.organization_id,
+        replacement_id,
+        secret_key=settings.secret_key.get_secret_value(),
+        lifetime=timedelta(minutes=settings.access_token_minutes),
+        issued_at=current_time,
+    )
+    session.commit()
+    return RefreshResult(
+        access_token,
+        raw_token,
+        replacement_id,
+        refresh_expires_at,
+    )

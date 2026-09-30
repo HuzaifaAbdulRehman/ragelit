@@ -1,27 +1,42 @@
-from collections.abc import Iterator
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Cookie, Depends, Request, Response
+from fastapi import APIRouter, Cookie, Request, Response
 from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
 
+from app.api.deps import CurrentPrincipal, DatabaseSession
 from app.core.config import Settings
-from app.core.problems import problem_response
-from app.identity.schemas import LoginCommand
-from app.identity.service import AuthError, login, logout_refresh, refresh
+from app.core.problems import ProblemDetail, problem_response
+from app.identity.schemas import (
+    AccessTokenResponse,
+    LoginCommand,
+    SwitchOrganizationCommand,
+)
+from app.identity.service import (
+    AuthError,
+    login,
+    logout_refresh,
+    refresh,
+    switch_organization,
+)
 
 REFRESH_COOKIE = "ragelit_refresh"
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
+PROBLEM_CONTENT: dict[str, Any] = {
+    "application/problem+json": {
+        "schema": {"$ref": "#/components/schemas/ProblemDetail"},
+    }
+}
+AUTH_RESPONSES: dict[int | str, dict[str, Any]] = {
+    401: {"model": ProblemDetail, "content": PROBLEM_CONTENT},
+}
+SWITCH_RESPONSES: dict[int | str, dict[str, Any]] = {
+    **AUTH_RESPONSES,
+    404: {"model": ProblemDetail, "content": PROBLEM_CONTENT},
+}
 
-def _database_session(request: Request) -> Iterator[Session]:
-    factory = request.app.state.session_factory
-    with factory() as session:
-        yield session
 
-
-DatabaseSession = Annotated[Session, Depends(_database_session)]
 RefreshCookie = Annotated[str | None, Cookie(alias=REFRESH_COOKIE)]
 
 
@@ -62,12 +77,16 @@ def _auth_problem(code: str) -> JSONResponse:
     )
 
 
-@router.post("/login", response_model=None)
+@router.post(
+    "/login",
+    response_model=AccessTokenResponse,
+    responses=AUTH_RESPONSES,
+)
 def login_route(
     command: LoginCommand,
     request: Request,
     session: DatabaseSession,
-) -> dict[str, str] | JSONResponse:
+) -> JSONResponse:
     settings: Settings = request.app.state.settings
     try:
         result = login(command, session=session, settings=settings)
@@ -79,12 +98,16 @@ def login_route(
     return response
 
 
-@router.post("/refresh", response_model=None)
+@router.post(
+    "/refresh",
+    response_model=AccessTokenResponse,
+    responses=AUTH_RESPONSES,
+)
 def refresh_route(
     request: Request,
     session: DatabaseSession,
     raw_token: RefreshCookie = None,
-) -> dict[str, str] | JSONResponse:
+) -> JSONResponse:
     if raw_token is None:
         return _auth_problem("invalid_refresh")
     settings: Settings = request.app.state.settings
@@ -98,7 +121,7 @@ def refresh_route(
     return response
 
 
-@router.post("/logout", status_code=204)
+@router.post("/logout", status_code=204, responses=AUTH_RESPONSES)
 def logout_route(
     request: Request,
     session: DatabaseSession,
@@ -108,4 +131,38 @@ def logout_route(
         logout_refresh(raw_token, session=session)
     response = Response(status_code=204)
     response.delete_cookie(key=REFRESH_COOKIE, path="/api/v1/auth")
+    return response
+
+
+@router.post(
+    "/switch-organization",
+    response_model=AccessTokenResponse,
+    responses=SWITCH_RESPONSES,
+)
+def switch_organization_route(
+    command: SwitchOrganizationCommand,
+    request: Request,
+    principal: CurrentPrincipal,
+    session: DatabaseSession,
+) -> JSONResponse:
+    settings: Settings = request.app.state.settings
+    try:
+        result = switch_organization(
+            principal,
+            command.target_organization_id,
+            session=session,
+            settings=settings,
+        )
+    except AuthError as error:
+        if error.code == "resource_not_found":
+            return problem_response(
+                status=404,
+                code="resource_not_found",
+                title="Not Found",
+                detail="The requested resource was not found.",
+            )
+        return _auth_problem(error.code)
+
+    response = _token_response(result.access_token)
+    _set_refresh_cookie(response, result.refresh_token, settings)
     return response

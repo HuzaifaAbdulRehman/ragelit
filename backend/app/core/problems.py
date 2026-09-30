@@ -2,6 +2,17 @@ from collections.abc import Mapping
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict
+
+
+class ProblemDetail(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    type: str
+    title: str
+    status: int
+    detail: str
+    code: str
 
 
 class ProblemException(Exception):

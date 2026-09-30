@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -18,6 +19,17 @@ class LoginCommand(BaseModel):
     @classmethod
     def normalize_email(cls, value: str) -> str:
         return value.strip().lower()
+
+
+class SwitchOrganizationCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    target_organization_id: UUID
+
+
+class AccessTokenResponse(BaseModel):
+    access_token: str
+    token_type: Literal["bearer"]
 
 
 @dataclass(frozen=True, slots=True)
