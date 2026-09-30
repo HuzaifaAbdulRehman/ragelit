@@ -11,6 +11,7 @@ from app.core.security import decode_access_token
 from app.identity.models import RefreshSession, User
 from app.tenancy.enums import Role
 from app.tenancy.models import GroupMember, Membership
+from app.tenancy.rls import set_request_context
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,6 +54,11 @@ def load_current_principal(
     except (jwt.PyJWTError, KeyError, TypeError, ValueError) as error:
         raise PrincipalError from error
 
+    set_request_context(
+        session,
+        user_id=user_id,
+        organization_id=organization_id,
+    )
     current_time = now or datetime.now(UTC)
     row = session.execute(
         select(RefreshSession, User, Membership)

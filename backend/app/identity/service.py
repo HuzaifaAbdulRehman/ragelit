@@ -11,6 +11,7 @@ from app.core.security import hash_password, issue_access_token, verify_password
 from app.identity.models import RefreshSession, User
 from app.identity.schemas import LoginCommand, LoginResult, RefreshResult
 from app.tenancy.models import Membership, Organization
+from app.tenancy.rls import set_refresh_token_context, set_request_context
 
 _DUMMY_PASSWORD_HASH = hash_password("ragelit-invalid-login-placeholder")
 
@@ -38,27 +39,28 @@ def login(
     now: datetime | None = None,
 ) -> LoginResult:
     current_time = now or datetime.now(UTC)
-    row = session.execute(
-        select(User, Membership, Organization)
-        .join(Membership, Membership.user_id == User.id)
-        .join(Organization, Organization.id == Membership.organization_id)
-        .where(
-            User.email == command.email,
-            Organization.slug == command.organization_slug,
-        )
-    ).one_or_none()
-
-    user = row[0] if row else None
-    membership = row[1] if row else None
+    user = session.scalar(select(User).where(User.email == command.email))
+    organization = session.scalar(
+        select(Organization).where(Organization.slug == command.organization_slug)
+    )
     encoded = user.password_hash if user else _DUMMY_PASSWORD_HASH
     password_valid = verify_password(command.password, encoded)
-    if (
-        user is None
-        or membership is None
-        or not password_valid
-        or not user.is_active
-        or not membership.is_active
-    ):
+    if user is None or organization is None or not password_valid or not user.is_active:
+        raise AuthError("invalid_credentials")
+
+    set_request_context(
+        session,
+        user_id=user.id,
+        organization_id=organization.id,
+    )
+    membership = session.scalar(
+        select(Membership).where(
+            Membership.user_id == user.id,
+            Membership.organization_id == organization.id,
+            Membership.is_active.is_(True),
+        )
+    )
+    if membership is None:
         raise AuthError("invalid_credentials")
 
     raw_token, token_hash = _new_refresh_token()
@@ -92,21 +94,32 @@ def refresh(
     now: datetime | None = None,
 ) -> RefreshResult:
     current_time = now or datetime.now(UTC)
-    row = session.execute(
-        select(RefreshSession, User, Membership)
-        .join(User, User.id == RefreshSession.user_id)
-        .join(
-            Membership,
-            (Membership.user_id == RefreshSession.user_id)
-            & (Membership.organization_id == RefreshSession.organization_id),
-        )
-        .where(RefreshSession.token_hash == _token_hash(raw_token))
+    token_hash = _token_hash(raw_token)
+    set_refresh_token_context(session, token_hash=token_hash)
+    stored = session.scalar(
+        select(RefreshSession)
+        .where(RefreshSession.token_hash == token_hash)
         .with_for_update()
+    )
+    if stored is None:
+        raise AuthError("invalid_refresh")
+
+    set_request_context(
+        session,
+        user_id=stored.user_id,
+        organization_id=stored.organization_id,
+    )
+    row = session.execute(
+        select(User, Membership)
+        .join(Membership, Membership.user_id == User.id)
+        .where(
+            User.id == stored.user_id,
+            Membership.organization_id == stored.organization_id,
+        )
     ).one_or_none()
     if row is None:
         raise AuthError("invalid_refresh")
-
-    stored, user, membership = row
+    user, membership = row
     if stored.used_at is not None:
         session.execute(
             update(RefreshSession)
@@ -169,11 +182,18 @@ def logout(
 def logout_refresh(
     raw_token: str, *, session: Session, now: datetime | None = None
 ) -> None:
+    token_hash = _token_hash(raw_token)
+    set_refresh_token_context(session, token_hash=token_hash)
     stored = session.scalar(
         select(RefreshSession)
-        .where(RefreshSession.token_hash == _token_hash(raw_token))
+        .where(RefreshSession.token_hash == token_hash)
         .with_for_update()
     )
     if stored is not None and stored.revoked_at is None:
+        set_request_context(
+            session,
+            user_id=stored.user_id,
+            organization_id=stored.organization_id,
+        )
         stored.revoked_at = now or datetime.now(UTC)
     session.commit()
