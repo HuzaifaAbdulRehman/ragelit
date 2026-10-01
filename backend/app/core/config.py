@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Literal, Self
 
 from pydantic import AnyHttpUrl, Field, SecretStr, model_validator
@@ -21,6 +22,7 @@ class Settings(BaseSettings):
     access_token_minutes: int = Field(default=15, gt=0)
     refresh_session_days: int = Field(default=14, gt=0)
     max_upload_bytes: int = Field(default=25 * 1024 * 1024, gt=0)
+    data_dir: Path = Path("../data")
     allowed_origins: list[str] = Field(default_factory=list)
     cookie_secure: bool = False
 
