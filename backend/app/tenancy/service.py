@@ -179,6 +179,7 @@ def create_group(
     *,
     session: Session,
 ) -> Group:
+    _lock_organization(principal, session=session)
     group = Group(organization_id=principal.organization_id, name=name)
     session.add(group)
     try:
@@ -215,6 +216,7 @@ def rename_group(
     *,
     session: Session,
 ) -> Group:
+    _lock_organization(principal, session=session)
     group = _locked_group(principal, group_id, session=session)
     group.name = name
     try:
@@ -231,6 +233,7 @@ def delete_group(
     *,
     session: Session,
 ) -> None:
+    _lock_organization(principal, session=session)
     group = _locked_group(principal, group_id, session=session)
     session.delete(group)
     session.commit()
@@ -243,6 +246,7 @@ def add_group_member(
     *,
     session: Session,
 ) -> None:
+    _lock_organization(principal, session=session)
     group = _locked_group(principal, group_id, session=session)
     membership = _locked_membership(principal, membership_id, session=session)
     if not membership.is_active:
@@ -268,6 +272,7 @@ def remove_group_member(
     *,
     session: Session,
 ) -> None:
+    _lock_organization(principal, session=session)
     group = _locked_group(principal, group_id, session=session)
     membership = _locked_membership(principal, membership_id, session=session)
     group_member = session.scalar(
