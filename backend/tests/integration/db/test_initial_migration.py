@@ -47,6 +47,10 @@ def test_initial_migration_round_trip(empty_database_url: str) -> None:
         "organizations",
         "refresh_sessions",
         "users",
+        "documents",
+        "document_versions",
+        "document_grants",
+        "ingestion_jobs",
     }
     assert {
         constraint["name"]

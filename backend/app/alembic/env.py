@@ -5,6 +5,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import Settings
 from app.db.base import Base
+from app.documents import models as document_models
 from app.identity import models as identity_models
 from app.tenancy import models as tenancy_models
 
@@ -61,4 +62,4 @@ if context.is_offline_mode():
 else:
     run_migrations_online()
 
-_ = identity_models, tenancy_models
+_ = identity_models, tenancy_models, document_models
