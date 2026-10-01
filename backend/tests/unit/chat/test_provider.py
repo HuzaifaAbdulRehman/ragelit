@@ -3,14 +3,14 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
+from time import perf_counter, sleep
 from typing import Any
-from urllib.error import URLError
 from uuid import uuid4
 
+import httpx2
 import pytest
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 
-from app.chat import provider as provider_module
 from app.chat.provider import CompatibleProvider
 from app.core.config import Settings
 from app.documents.extraction import DocumentError
@@ -41,7 +41,13 @@ def evidence() -> tuple[AuthorizedChunk, ...]:
 
 
 @contextmanager
-def endpoint(body: bytes) -> Iterator[tuple[str, list[dict[str, Any]]]]:
+def endpoint(
+    body: bytes,
+    *,
+    status: int = 200,
+    location: str | None = None,
+    drip: float = 0,
+) -> Iterator[tuple[str, list[dict[str, Any]]]]:
     requests: list[dict[str, Any]] = []
 
     class Handler(BaseHTTPRequestHandler):
@@ -50,9 +56,25 @@ def endpoint(body: bytes) -> Iterator[tuple[str, list[dict[str, Any]]]]:
             requests.append(
                 {"path": self.path, "body": json.loads(raw), "headers": self.headers}
             )
-            self.send_response(200)
+            self.respond()
+
+        def do_GET(self) -> None:
+            requests.append({"path": self.path, "body": None, "headers": self.headers})
+            self.respond()
+
+        def respond(self) -> None:
+            self.send_response(status)
+            if location:
+                self.send_header("Location", location)
             self.end_headers()
-            self.wfile.write(body)
+            step = max(1, len(body) // 4) if drip else max(1, len(body))
+            try:
+                for start in range(0, len(body), step):
+                    sleep(drip)
+                    self.wfile.write(body[start : start + step])
+                    self.wfile.flush()
+            except ConnectionError:
+                return
 
         def log_message(self, format: str, *args: object) -> None:
             pass
@@ -102,13 +124,18 @@ def test_unconfigured_generation_has_no_network_side_effect() -> None:
         CompatibleProvider(settings()).generate("Question", evidence())
 
 
-def test_wrapped_socket_timeout_has_stable_timeout_code(
+def test_transport_timeout_has_stable_timeout_code(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def timeout(*args: object, **kwargs: object) -> None:
-        raise URLError(TimeoutError("private network details"))
+    def timeout(request: httpx2.Request) -> httpx2.Response:
+        raise httpx2.ReadTimeout("private network details")
 
-    monkeypatch.setattr(provider_module, "urlopen", timeout)
+    original = httpx2.AsyncClient
+
+    def client(**kwargs: Any) -> httpx2.AsyncClient:
+        return original(**kwargs, transport=httpx2.MockTransport(timeout))
+
+    monkeypatch.setattr(httpx2, "AsyncClient", client)
     with pytest.raises(DocumentError) as caught:
         CompatibleProvider(settings("http://127.0.0.1:1/v1")).generate(
             "Question", evidence()
@@ -152,3 +179,36 @@ def test_http_adapter_does_not_accept_a_truncated_generation() -> None:
             CompatibleProvider(settings(url)).generate("Question", context)
     assert caught.value.code == "generation_incomplete"
     assert caught.value.status == 502
+
+
+def test_redirect_never_forwards_a_provider_key() -> None:
+    context = evidence()
+    content = json.dumps({"answer": "answer", "citation_ids": [str(context[0].id)]})
+    body = json.dumps(
+        {"choices": [{"finish_reason": "stop", "message": {"content": content}}]}
+    ).encode()
+    with endpoint(body) as (target, target_requests):
+        with endpoint(b"", status=302, location=target) as (origin, _):
+            config = settings(origin).model_copy(
+                update={"llm_api_key": SecretStr("synthetic-provider-key")}
+            )
+            with pytest.raises(DocumentError) as caught:
+                CompatibleProvider(config).generate("Question", context)
+        assert target_requests == []
+    assert caught.value.code == "generation_unavailable"
+
+
+def test_slow_drip_response_obeys_total_deadline() -> None:
+    context = evidence()
+    content = json.dumps({"answer": "answer", "citation_ids": [str(context[0].id)]})
+    body = json.dumps(
+        {"choices": [{"finish_reason": "stop", "message": {"content": content}}]}
+    ).encode()
+    with endpoint(body, drip=0.4) as (url, _):
+        config = settings(url).model_copy(update={"llm_timeout_seconds": 1})
+        started = perf_counter()
+        with pytest.raises(DocumentError) as caught:
+            CompatibleProvider(config).generate("Question", context)
+        assert perf_counter() - started < 1.8
+    assert caught.value.code == "generation_timeout"
+    assert caught.value.status == 504

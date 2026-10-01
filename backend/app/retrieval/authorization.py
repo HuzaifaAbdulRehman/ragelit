@@ -63,6 +63,7 @@ def eligible_versions(scope: AccessScope, session: Session) -> tuple[UUID, ...]:
                 DocumentVersion.organization_id == scope.organization_id,
                 Document.state == "ready",
                 DocumentVersion.state == "ready",
+                Document.current_version_id == DocumentVersion.id,
                 or_(Document.visibility == "organization", granted),
             )
             .with_for_update(

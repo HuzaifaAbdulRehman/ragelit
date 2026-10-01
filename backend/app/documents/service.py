@@ -79,6 +79,7 @@ def create_document(
     )
     session.add(version)
     session.flush()
+    document.current_version_id = version_id
     session.add(
         IngestionJob(organization_id=principal.organization_id, version_id=version_id)
     )

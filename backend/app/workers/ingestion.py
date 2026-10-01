@@ -69,6 +69,11 @@ def claim_job(
     document = session.get(Document, version.document_id)
     if document is None:
         raise DocumentError("resource_not_found", 404)
+    if document.current_version_id != version.id:
+        job.state, job.error_code = "failed", "version_replaced"
+        job.claim_id, job.lease_until = None, None
+        session.commit()
+        return None
     if job.attempts >= 3 or document.state == "deleted":
         job.state, job.error_code = "failed", "retry_exhausted"
         if document.state != "deleted":
@@ -97,7 +102,11 @@ def _index_context(claim: JobClaim, session: Session) -> IndexContext:
     document = session.scalar(
         select(Document).where(Document.id == claim.document_id).with_for_update()
     )
-    if document is None or document.state == "deleted":
+    if (
+        document is None
+        or document.state == "deleted"
+        or document.current_version_id != claim.version_id
+    ):
         raise DocumentError("job_claim_lost", 409)
     grants = list(
         session.scalars(
@@ -190,6 +199,7 @@ def run_once(
                     version is not None
                     and document is not None
                     and document.state != "deleted"
+                    and document.current_version_id == claim.version_id
                 ):
                     version.state = document.state = "failed"
                 session.commit()

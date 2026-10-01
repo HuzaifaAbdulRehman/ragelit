@@ -16,6 +16,16 @@ from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 class Document(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "documents"
     __table_args__ = (
+        ForeignKeyConstraint(
+            ["current_version_id", "id", "organization_id"],
+            [
+                "document_versions.id",
+                "document_versions.document_id",
+                "document_versions.organization_id",
+            ],
+            name="fk_documents_current_version",
+            use_alter=True,
+        ),
         UniqueConstraint("id", "organization_id", name="uq_documents_id_organization"),
         UniqueConstraint(
             "organization_id", "checksum", name="uq_documents_organization_checksum"
@@ -31,6 +41,7 @@ class Document(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     organization_id: Mapped[UUID] = mapped_column(
         ForeignKey("organizations.id", ondelete="CASCADE"), index=True
     )
+    current_version_id: Mapped[UUID | None]
     filename: Mapped[str] = mapped_column(String(255))
     media_type: Mapped[str] = mapped_column(String(100))
     checksum: Mapped[str] = mapped_column(String(64))
@@ -53,6 +64,12 @@ class DocumentVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ),
         UniqueConstraint(
             "id", "organization_id", name="uq_document_versions_id_organization"
+        ),
+        UniqueConstraint(
+            "id",
+            "document_id",
+            "organization_id",
+            name="uq_document_versions_id_parent",
         ),
         CheckConstraint("byte_count > 0", name="positive_size"),
         CheckConstraint(

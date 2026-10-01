@@ -6,9 +6,10 @@ from uuid import UUID
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from qdrant_client import QdrantClient
-from sqlalchemy import Engine
+from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.documents.models import Document, IngestionJob
 from app.retrieval.embeddings import Embedding
 from app.retrieval.service import AuthorizedRetriever
 from app.retrieval.store import QdrantChunkStore
@@ -265,3 +266,92 @@ def test_retry_recovers_the_same_uploaded_version(
     ).json()
     assert len(final) == 1 and final[0]["id"] == original[0]["id"]
     assert final[0]["state"] == "ready"
+
+
+def test_obsolete_projection_repair_cannot_restore_replaced_content(
+    tenant_client: TestClient,
+    tenant_seed: TenantApiSeed,
+    tmp_path: Path,
+    tenant_database_engines: tuple[Engine, Engine],
+    login_headers: Callable[[str, str], dict[str, str]],
+    vector_store: QdrantChunkStore,
+) -> None:
+    state = cast(FastAPI, tenant_client.app).state
+    state.settings = state.settings.model_copy(update={"data_dir": tmp_path})
+    state.chunk_store = vector_store
+    owner = login_headers(tenant_seed.owner_email, tenant_seed.organization_a_slug)
+    upload = tenant_client.post(
+        "/api/v1/documents?filename=old.txt",
+        headers={**owner, "Content-Type": "text/plain"},
+        content=b"Old evidence",
+    )
+    assert upload.status_code == 202
+    document_id = UUID(upload.json()["id"])
+    assert (
+        tenant_client.patch(
+            f"/api/v1/documents/{document_id}",
+            headers=owner,
+            json={"visibility": "organization"},
+        ).status_code
+        == 200
+    )
+    admin, runtime = tenant_database_engines
+    factory = sessionmaker(bind=runtime, expire_on_commit=False)
+    options = dict(factory=factory, settings=state.settings, store=vector_store)
+    assert run_once(
+        tenant_seed.organization_a_id, **options, embeddings=TestEmbeddings()
+    )
+    failed_client = QdrantClient(
+        url="http://127.0.0.1:1", timeout=1, check_compatibility=False
+    )
+    try:
+        state.chunk_store = QdrantChunkStore(
+            failed_client, vector_store.collection_name, dimension=4
+        )
+        assert (
+            tenant_client.patch(
+                f"/api/v1/documents/{document_id}",
+                headers=owner,
+                json={"visibility": "restricted"},
+            ).status_code
+            == 503
+        )
+    finally:
+        failed_client.close()
+        state.chunk_store = vector_store
+    replacement = tenant_client.post(
+        f"/api/v1/documents/{document_id}/versions?filename=new.txt",
+        headers={**owner, "Content-Type": "text/plain"},
+        content=b"New evidence",
+    )
+    assert replacement.status_code == 202
+
+    class InterleavedEmbeddings(TestEmbeddings):
+        def documents(self, texts: list[str]) -> list[Embedding]:
+            if "Old evidence" in texts:
+                assert run_once(
+                    tenant_seed.organization_a_id,
+                    **options,
+                    embeddings=TestEmbeddings(),
+                )
+            return super().documents(texts)
+
+    assert run_once(
+        tenant_seed.organization_a_id,
+        **options,
+        embeddings=InterleavedEmbeddings(),
+    )
+    scope = scope_for(admin, tenant_seed.member_email, tenant_seed.organization_a_id)
+    with Session(runtime) as session:
+        set_request_context(
+            session, user_id=scope.user_id, organization_id=scope.organization_id
+        )
+        chunks = AuthorizedRetriever(session, vector_store, TestEmbeddings()).search(
+            scope, "evidence", 10
+        )
+        assert [chunk.text for chunk in chunks] == ["New evidence"]
+        document = session.get(Document, document_id)
+        assert document is not None and document.state == "ready"
+        jobs = list(session.scalars(select(IngestionJob)))
+        assert len(jobs) == 2
+        assert {job.state for job in jobs} == {"ready", "failed"}

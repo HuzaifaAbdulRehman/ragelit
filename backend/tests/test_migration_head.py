@@ -62,3 +62,66 @@ def test_database_matches_single_migration_head(
 
 
 _ = identity_models, tenancy_models
+
+
+def test_intended_version_migration_preserves_existing_rows_and_rls(
+    migration_database_url: str,
+) -> None:
+    config = Config("alembic.ini")
+    config.set_main_option("sqlalchemy.url", migration_database_url)
+    command.upgrade(config, "0005_query_traces")
+    organization_id, document_id, version_id = uuid4(), uuid4(), uuid4()
+    engine = create_engine(migration_database_url)
+    values = {
+        "org": organization_id,
+        "doc": document_id,
+        "version": version_id,
+        "checksum": uuid4().hex * 2,
+    }
+    try:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO organizations (id, name, slug) "
+                    "VALUES (:org, 'legacy', 'legacy')"
+                ),
+                values,
+            )
+            connection.execute(
+                text("""INSERT INTO documents
+                    (id, organization_id, filename, media_type, checksum, state)
+                    VALUES (:doc, :org, 'legacy.txt', 'text/plain',
+                            :checksum, 'ready')"""),
+                values,
+            )
+            connection.execute(
+                text("""INSERT INTO document_versions
+                    (id, organization_id, document_id, storage_key,
+                     checksum, byte_count, state)
+                    VALUES (:version, :org, :doc, 'synthetic',
+                            :checksum, 1, 'ready')"""),
+                values,
+            )
+        for _ in range(2):
+            command.upgrade(config, "head")
+            with engine.connect() as connection:
+                assert (
+                    connection.execute(
+                        text(
+                            "SELECT current_version_id FROM documents WHERE id = :doc"
+                        ),
+                        values,
+                    ).scalar_one()
+                    == version_id
+                )
+                assert (
+                    connection.execute(
+                        text("""SELECT count(*) FROM pg_class
+                        WHERE relname IN ('documents', 'document_versions')
+                        AND relrowsecurity AND relforcerowsecurity""")
+                    ).scalar_one()
+                    == 2
+                )
+            command.downgrade(config, "0005_query_traces")
+    finally:
+        engine.dispose()

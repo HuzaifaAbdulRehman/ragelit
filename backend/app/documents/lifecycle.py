@@ -205,6 +205,17 @@ def replace_document(
         raise DocumentError("duplicate_document", 409)
     if document.checksum == upload.checksum:
         return document, False
+    obsolete_jobs = session.scalars(
+        select(IngestionJob)
+        .join(DocumentVersion, DocumentVersion.id == IngestionJob.version_id)
+        .where(
+            DocumentVersion.document_id == document.id,
+            IngestionJob.state.in_(("queued", "processing")),
+        )
+    )
+    for job in obsolete_jobs:
+        job.state, job.error_code = "failed", "version_replaced"
+        job.claim_id, job.lease_until = None, None
     document.checksum, document.filename, document.media_type, document.state = (
         upload.checksum,
         filename,
@@ -222,6 +233,7 @@ def replace_document(
         )
     )
     session.flush()
+    document.current_version_id = version_id
     session.add(
         IngestionJob(organization_id=principal.organization_id, version_id=version_id)
     )

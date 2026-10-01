@@ -53,7 +53,10 @@ organization visibility before the document can be used in an answer.
 Uploads accept raw file bytes, not multipart forms. TXT, Markdown, DOCX, and
 text PDFs are supported up to 25 MiB. Encrypted or image-only PDFs are rejected;
 there is no OCR. Extraction has a separate four-million-character limit and
-DOCX expansion limits. Chunks preserve page, paragraph, or starting-line locations.
+DOCX expansion limits. PDF parsing runs in a separate process with a 256 MiB
+memory cap and a 30-second deadline, plus a 16 MiB page-content decoding budget.
+Those limits can reject otherwise valid complex PDFs. Chunks preserve page,
+paragraph, or starting-line locations.
 
 Here is a PowerShell example from a folder containing your `notes.txt`:
 

@@ -1,10 +1,11 @@
+import json
+import os
+import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from xml.etree import ElementTree
 from zipfile import BadZipFile, ZipFile
-
-from pypdf import PdfReader
-from pypdf.errors import PdfReadError
 
 from app.core.problems import ProblemException
 
@@ -35,6 +36,42 @@ class DocumentError(ProblemException):
 class TextSection:
     text: str
     location: str
+
+
+def _extract_pdf(path: Path) -> list[TextSection]:
+    environment = {
+        key: os.environ[key]
+        for key in ("SystemRoot", "SYSTEMROOT", "WINDIR", "PATH", "TEMP", "TMP")
+        if key in os.environ
+    }
+    try:
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-I",
+                str(Path(__file__).with_name("pdf_worker.py")),
+                str(path.resolve()),
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=30,
+            check=False,
+            env=environment,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise DocumentError("extraction_limit") from error
+    except OSError as error:
+        raise DocumentError("extraction_unavailable", 503) from error
+    if result.returncode != 0:
+        raise DocumentError("extraction_limit")
+    payload = json.loads(result.stdout)
+    if "error" in payload:
+        raise DocumentError(payload["error"])
+    return [
+        TextSection(section["text"], section["location"])
+        for section in payload["sections"]
+    ]
 
 
 def extract_text(path: Path, media_type: str) -> tuple[TextSection, ...]:
@@ -80,20 +117,7 @@ def extract_text(path: Path, media_type: str) -> tuple[TextSection, ...]:
                 if text.strip():
                     sections.append(TextSection(text, f"paragraph {number}"))
         elif media_type == "application/pdf":
-            reader = PdfReader(path, strict=True)
-            if reader.is_encrypted or len(reader.pages) > 1000:
-                raise DocumentError("invalid_document")
-            total = 0
-            for number, page in enumerate(reader.pages, start=1):
-                contents = page.get_contents()
-                if contents is not None and len(contents.get_data()) > 16 * 1024 * 1024:
-                    raise DocumentError("extraction_limit")
-                text = page.extract_text() or ""
-                total += len(text)
-                if total > MAX_TEXT:
-                    raise DocumentError("extraction_limit")
-                if text.strip():
-                    sections.append(TextSection(text, f"page {number}"))
+            sections = _extract_pdf(path)
         else:
             raise DocumentError("unsupported_document_type", 415)
     except (
@@ -101,7 +125,6 @@ def extract_text(path: Path, media_type: str) -> tuple[TextSection, ...]:
         BadZipFile,
         KeyError,
         ElementTree.ParseError,
-        PdfReadError,
         ValueError,
     ) as error:
         raise DocumentError("invalid_document") from error

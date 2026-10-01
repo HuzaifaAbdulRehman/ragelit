@@ -95,3 +95,33 @@ def test_runtime_cannot_insert_document_for_another_organization(
         )
         with pytest.raises(ProgrammingError, match="row-level security"):
             session.flush()
+
+
+def test_current_version_must_belong_to_the_same_document(
+    tenant_database_engines: tuple[Engine, Engine], tenant_seed: TenantApiSeed
+) -> None:
+    admin, _ = tenant_database_engines
+    with Session(admin) as session:
+        documents = [
+            Document(
+                organization_id=tenant_seed.organization_a_id,
+                filename=f"{number}.txt",
+                media_type="text/plain",
+                checksum=uuid4().hex * 2,
+            )
+            for number in range(2)
+        ]
+        session.add_all(documents)
+        session.flush()
+        version = DocumentVersion(
+            organization_id=tenant_seed.organization_a_id,
+            document_id=documents[0].id,
+            storage_key="synthetic",
+            checksum=documents[0].checksum,
+            byte_count=1,
+        )
+        session.add(version)
+        session.flush()
+        documents[1].current_version_id = version.id
+        with pytest.raises(IntegrityError):
+            session.flush()

@@ -52,10 +52,35 @@ class QdrantChunkStore:
             not isinstance(vectors, dict)
             or "dense" not in vectors
             or vectors["dense"].size != self.dimension
+            or vectors["dense"].distance != models.Distance.COSINE
             or sparse is None
             or "sparse" not in sparse
+            or sparse["sparse"].modifier != models.Modifier.IDF
         ):
             raise DocumentError("index_configuration_invalid", 503)
+        required_types = dict.fromkeys(
+            (
+                "organization_id",
+                "document_id",
+                "document_version_id",
+                "claim_id",
+                "visibility",
+                "allowed_user_ids",
+                "allowed_group_ids",
+            ),
+            models.PayloadSchemaType.KEYWORD,
+        )
+        required_types["active"] = models.PayloadSchemaType.BOOL
+        for key, expected in required_types.items():
+            index = info.payload_schema.get(key)
+            if index is not None and index.data_type != expected:
+                raise DocumentError("index_configuration_invalid", 503)
+            if key == "organization_id" and index is not None:
+                if (
+                    not isinstance(index.params, models.KeywordIndexParams)
+                    or index.params.is_tenant is not True
+                ):
+                    raise DocumentError("index_configuration_invalid", 503)
         for key in (
             "organization_id",
             "document_id",

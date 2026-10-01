@@ -63,6 +63,8 @@ def indexed_document(
             chunk_count=1,
         )
         session.add(version)
+        session.flush()
+        document.current_version_id = version.id
         if user_id is not None or group_id is not None:
             session.add(
                 DocumentGrant(

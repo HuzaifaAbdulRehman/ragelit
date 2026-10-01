@@ -1,8 +1,8 @@
+import asyncio
 import json
-from urllib.error import URLError
-from urllib.request import Request, urlopen
 from uuid import UUID
 
+import httpx2
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.chat.contracts import Generation
@@ -57,27 +57,16 @@ class CompatibleProvider:
                 },
             ],
         }
-        headers = {"Content-Type": "application/json"}
+        headers = {"Content-Type": "application/json", "Accept-Encoding": "identity"}
         key = settings.llm_api_key.get_secret_value()
         if key:
             headers["Authorization"] = f"Bearer {key}"
-        request = Request(
-            f"{str(settings.llm_base_url).rstrip('/')}/chat/completions",
-            data=json.dumps(body).encode("utf-8"),
-            headers=headers,
-            method="POST",
-        )
         try:
-            with urlopen(request, timeout=settings.llm_timeout_seconds) as response:
-                raw = response.read(256 * 1024 + 1)
-        except URLError as error:
-            if isinstance(error.reason, TimeoutError):
-                raise DocumentError("generation_timeout", 504) from error
-            raise DocumentError("generation_unavailable", 502) from error
-        except TimeoutError as error:
+            raw = asyncio.run(self._request(body, headers))
+        except (TimeoutError, httpx2.TimeoutException) as error:
             raise DocumentError("generation_timeout", 504) from error
-        if len(raw) > 256 * 1024:
-            raise DocumentError("generation_response_too_large", 502)
+        except (httpx2.HTTPError, OSError) as error:
+            raise DocumentError("generation_unavailable", 502) from error
         parsed = json.loads(raw)
         choice = parsed["choices"][0]
         if choice.get("finish_reason") != "stop":
@@ -85,3 +74,23 @@ class CompatibleProvider:
         content = choice["message"]["content"]
         answer = ProviderAnswer.model_validate_json(content)
         return Generation(answer.answer, tuple(answer.citation_ids))
+
+    async def _request(self, body: dict[str, object], headers: dict[str, str]) -> bytes:
+        settings = self._settings
+        endpoint = f"{str(settings.llm_base_url).rstrip('/')}/chat/completions"
+        async with asyncio.timeout(settings.llm_timeout_seconds):
+            async with httpx2.AsyncClient(
+                timeout=settings.llm_timeout_seconds,
+                follow_redirects=False,
+                trust_env=False,
+            ) as client:
+                async with client.stream(
+                    "POST", endpoint, json=body, headers=headers
+                ) as response:
+                    response.raise_for_status()
+                    data = bytearray()
+                    async for chunk in response.aiter_raw():
+                        if len(data) + len(chunk) > 256 * 1024:
+                            raise DocumentError("generation_response_too_large", 502)
+                        data.extend(chunk)
+                    return bytes(data)
