@@ -32,12 +32,17 @@ BearerCredentials = Annotated[
 ]
 
 
-def _authentication_failed() -> NoReturn:
+def _authentication_failed(code: str = "authentication_failed") -> NoReturn:
+    detail = (
+        "Membership is inactive."
+        if code == "membership_inactive"
+        else "Authentication failed."
+    )
     raise ProblemException(
         status=401,
-        code="authentication_failed",
+        code=code,
         title="Unauthorized",
-        detail="Authentication failed.",
+        detail=detail,
         headers={"WWW-Authenticate": "Bearer"},
     )
 
@@ -66,11 +71,34 @@ def get_current_principal(
             session=session,
             settings=settings,
         )
-    except PrincipalError:
-        _authentication_failed()
+    except PrincipalError as error:
+        _authentication_failed(error.code)
 
 
 CurrentPrincipal = Annotated[RequestPrincipal, Depends(get_current_principal)]
+
+
+def get_optional_current_principal(
+    request: Request,
+    session: DatabaseSession,
+    credentials: BearerCredentials = None,
+) -> RequestPrincipal | None:
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        return None
+    token = credentials.credentials.strip()
+    if not token:
+        return None
+    settings: Settings = request.app.state.settings
+    try:
+        return load_current_principal(token, session=session, settings=settings)
+    except PrincipalError:
+        return None
+
+
+OptionalCurrentPrincipal = Annotated[
+    RequestPrincipal | None,
+    Depends(get_optional_current_principal),
+]
 
 
 def build_access_scope(

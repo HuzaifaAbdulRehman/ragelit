@@ -231,13 +231,21 @@ def test_token_organization_must_match_the_current_session(
     assert response.json()["code"] == "authentication_failed"
 
 
-@pytest.mark.parametrize("invalid_state", ["session", "user", "membership"])
+@pytest.mark.parametrize(
+    ("invalid_state", "expected_code"),
+    [
+        ("session", "authentication_failed"),
+        ("user", "authentication_failed"),
+        ("membership", "membership_inactive"),
+    ],
+)
 def test_inactive_current_state_invalidates_an_existing_token(
     client: TestClient,
     session_factory: sessionmaker[Session],
     access_token: str,
     identity: tuple[User, Organization, Membership, Group],
     invalid_state: str,
+    expected_code: str,
 ) -> None:
     user, _, membership, _ = identity
     with session_factory() as session:
@@ -258,7 +266,7 @@ def test_inactive_current_state_invalidates_an_existing_token(
     response = client.get("/principal", headers=_headers(access_token))
 
     assert response.status_code == 401
-    assert response.json()["code"] == "authentication_failed"
+    assert response.json()["code"] == expected_code
 
 
 def test_missing_membership_invalidates_an_existing_token(

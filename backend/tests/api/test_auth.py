@@ -157,6 +157,20 @@ def test_refresh_uses_cookie_and_rotates_it(client: TestClient) -> None:
     assert response.headers["cache-control"] == "no-store"
 
 
+def test_validation_errors_use_problem_details(client: TestClient) -> None:
+    response = client.post("/api/v1/auth/login", json={})
+
+    assert response.status_code == 422
+    assert response.headers["content-type"].startswith("application/problem+json")
+    assert response.json() == {
+        "type": "about:blank",
+        "title": "Unprocessable Content",
+        "status": 422,
+        "detail": "The request was invalid.",
+        "code": "request_validation_failed",
+    }
+
+
 def test_logout_revokes_session_and_clears_cookie(
     client: TestClient,
     session_factory: sessionmaker[Session],
@@ -174,3 +188,65 @@ def test_logout_revokes_session_and_clears_cookie(
         stored = session.scalar(select(RefreshSession))
         assert stored is not None
         assert stored.revoked_at is not None
+
+
+def test_logout_after_refresh_invalidates_the_access_token_family(
+    client: TestClient,
+) -> None:
+    login_response = _login(client)
+    original_access = login_response.json()["access_token"]
+    refresh_response = client.post("/api/v1/auth/refresh")
+    current_access = refresh_response.json()["access_token"]
+
+    response = client.post("/api/v1/auth/logout")
+
+    assert response.status_code == 204
+    for token in (original_access, current_access):
+        protected = client.get(
+            "/api/v1/organizations",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert protected.status_code == 401
+        assert protected.json()["code"] == "authentication_failed"
+
+
+def test_logout_without_cookie_revokes_the_bearer_session(
+    client: TestClient,
+) -> None:
+    login_response = _login(client)
+    access_token = login_response.json()["access_token"]
+    client.cookies.clear()
+
+    response = client.post(
+        "/api/v1/auth/logout",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    assert response.status_code == 204
+    protected = client.get(
+        "/api/v1/organizations",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert protected.status_code == 401
+    assert protected.json()["code"] == "authentication_failed"
+
+
+def test_logout_revokes_distinct_cookie_and_bearer_families(
+    client: TestClient,
+) -> None:
+    first_access = _login(client).json()["access_token"]
+    second_access = _login(client).json()["access_token"]
+
+    response = client.post(
+        "/api/v1/auth/logout",
+        headers={"Authorization": f"Bearer {first_access}"},
+    )
+
+    assert response.status_code == 204
+    for token in (first_access, second_access):
+        protected = client.get(
+            "/api/v1/organizations",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert protected.status_code == 401
+        assert protected.json()["code"] == "authentication_failed"

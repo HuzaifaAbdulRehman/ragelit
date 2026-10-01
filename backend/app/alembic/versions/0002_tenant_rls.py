@@ -101,7 +101,7 @@ def upgrade() -> None:
                 SELECT FROM pg_catalog.pg_roles WHERE rolname = 'ragelit_app'
             ) THEN
                 GRANT USAGE ON SCHEMA public TO ragelit_app;
-                GRANT SELECT, INSERT, UPDATE
+                GRANT SELECT
                     ON TABLE users
                     TO ragelit_app;
                 GRANT SELECT, UPDATE
@@ -125,7 +125,7 @@ def downgrade() -> None:
             IF EXISTS (
                 SELECT FROM pg_catalog.pg_roles WHERE rolname = 'ragelit_app'
             ) THEN
-                REVOKE SELECT, INSERT, UPDATE
+                REVOKE SELECT
                     ON TABLE users
                     FROM ragelit_app;
                 REVOKE SELECT, UPDATE

@@ -172,11 +172,18 @@ def logout(
     session: Session,
     now: datetime | None = None,
 ) -> None:
-    session.execute(
-        update(RefreshSession)
-        .where(RefreshSession.id == session_id, RefreshSession.revoked_at.is_(None))
-        .values(revoked_at=now or datetime.now(UTC))
+    stored = session.scalar(
+        select(RefreshSession).where(RefreshSession.id == session_id).with_for_update()
     )
+    if stored is not None:
+        session.execute(
+            update(RefreshSession)
+            .where(
+                RefreshSession.family_id == stored.family_id,
+                RefreshSession.revoked_at.is_(None),
+            )
+            .values(revoked_at=now or datetime.now(UTC))
+        )
     session.commit()
 
 
@@ -190,13 +197,20 @@ def logout_refresh(
         .where(RefreshSession.token_hash == token_hash)
         .with_for_update()
     )
-    if stored is not None and stored.revoked_at is None:
+    if stored is not None:
         set_request_context(
             session,
             user_id=stored.user_id,
             organization_id=stored.organization_id,
         )
-        stored.revoked_at = now or datetime.now(UTC)
+        session.execute(
+            update(RefreshSession)
+            .where(
+                RefreshSession.family_id == stored.family_id,
+                RefreshSession.revoked_at.is_(None),
+            )
+            .values(revoked_at=now or datetime.now(UTC))
+        )
     session.commit()
 
 

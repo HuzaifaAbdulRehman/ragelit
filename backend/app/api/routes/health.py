@@ -3,6 +3,7 @@ from collections.abc import Awaitable, Callable, Mapping
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 
 from app.core.problems import problem_response
 
@@ -13,7 +14,7 @@ DependencyCheck = Callable[[], bool | Awaitable[bool]]
 
 async def _run_check(check: DependencyCheck) -> bool:
     try:
-        result = check()
+        result = await run_in_threadpool(check)
         if inspect.isawaitable(result):
             result = await result
         return result is True

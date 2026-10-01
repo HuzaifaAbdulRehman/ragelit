@@ -33,7 +33,9 @@ class AccessScope:
 
 
 class PrincipalError(Exception):
-    code = "authentication_failed"
+    def __init__(self, code: str = "authentication_failed") -> None:
+        super().__init__(code)
+        self.code = code
 
 
 def load_current_principal(
@@ -73,15 +75,18 @@ def load_current_principal(
             RefreshSession.user_id == user_id,
             RefreshSession.organization_id == organization_id,
             RefreshSession.revoked_at.is_(None),
+            RefreshSession.used_at.is_(None),
             RefreshSession.expires_at > current_time,
-            User.is_active.is_(True),
-            Membership.is_active.is_(True),
         )
     ).one_or_none()
     if row is None:
         raise PrincipalError
 
     refresh_session, user, membership = row
+    if not user.is_active:
+        raise PrincipalError
+    if not membership.is_active:
+        raise PrincipalError("membership_inactive")
     return RequestPrincipal(
         user_id=user.id,
         organization_id=membership.organization_id,

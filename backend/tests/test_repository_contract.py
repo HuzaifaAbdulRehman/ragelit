@@ -15,8 +15,20 @@ def test_reference_sources_are_not_tracked() -> None:
 
 
 def test_third_party_notice_records_template_commit() -> None:
-    notice = (_repo_root() / "THIRD_PARTY_NOTICES.md").read_text(
-        encoding="utf-8"
-    )
+    notice = (_repo_root() / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
     assert "cb740b656d7a0a6c5e12c7bf8e50343ec94ee9c7" in notice
     assert "MIT" in notice
+
+
+def test_postgres_18_volume_mounts_versioned_parent() -> None:
+    compose = (_repo_root() / "compose.yml").read_text(encoding="utf-8")
+
+    assert "postgres-data:/var/lib/postgresql\n" in compose
+    assert "postgres-data:/var/lib/postgresql/data" not in compose
+
+
+def test_ci_includes_security_gates() -> None:
+    workflow = (_repo_root() / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+    assert "gitleaks/gitleaks-action@v2" in workflow
+    assert "actions/dependency-review-action@v4" in workflow

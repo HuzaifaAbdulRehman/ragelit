@@ -1,6 +1,7 @@
 from collections.abc import Mapping
 
 from fastapi import Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 
@@ -72,4 +73,18 @@ async def problem_exception_handler(
         title=error.title,
         detail=error.detail,
         headers=error.headers,
+    )
+
+
+async def request_validation_exception_handler(
+    _request: Request,
+    error: Exception,
+) -> JSONResponse:
+    if not isinstance(error, RequestValidationError):
+        raise error
+    return problem_response(
+        status=422,
+        code="request_validation_failed",
+        title="Unprocessable Content",
+        detail="The request was invalid.",
     )

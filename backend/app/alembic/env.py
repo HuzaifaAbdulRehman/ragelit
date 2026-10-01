@@ -3,11 +3,19 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+from app.core.config import Settings
 from app.db.base import Base
 from app.identity import models as identity_models
 from app.tenancy import models as tenancy_models
 
 config = context.config
+
+if config.get_main_option("sqlalchemy.url") == "configured-by-settings":
+    settings = Settings()  # type: ignore[call-arg]
+    config.set_main_option(
+        "sqlalchemy.url",
+        settings.database_admin_url.replace("%", "%%"),
+    )
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

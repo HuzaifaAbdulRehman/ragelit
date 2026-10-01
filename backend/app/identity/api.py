@@ -3,7 +3,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Cookie, Request, Response
 from fastapi.responses import JSONResponse
 
-from app.api.deps import CurrentPrincipal, DatabaseSession
+from app.api.deps import CurrentPrincipal, DatabaseSession, OptionalCurrentPrincipal
 from app.core.config import Settings
 from app.core.problems import ProblemDetail, problem_response
 from app.identity.schemas import (
@@ -14,6 +14,7 @@ from app.identity.schemas import (
 from app.identity.service import (
     AuthError,
     login,
+    logout,
     logout_refresh,
     refresh,
     switch_organization,
@@ -125,8 +126,11 @@ def refresh_route(
 def logout_route(
     request: Request,
     session: DatabaseSession,
+    principal: OptionalCurrentPrincipal,
     raw_token: RefreshCookie = None,
 ) -> Response:
+    if principal is not None:
+        logout(principal.session_id, session=session)
     if raw_token is not None:
         logout_refresh(raw_token, session=session)
     response = Response(status_code=204)

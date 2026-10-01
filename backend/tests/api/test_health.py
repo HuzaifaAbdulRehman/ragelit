@@ -1,8 +1,14 @@
 from collections.abc import Callable
+from contextlib import nullcontext
+from threading import get_ident
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
+from app.api.routes.health import _run_check
 from app.core.config import Settings
 from app.main import create_app
 
@@ -55,13 +61,41 @@ def test_readiness_reports_healthy_dependencies() -> None:
 
 
 def test_readiness_without_checks_fails_closed() -> None:
-    app = create_app(_settings())
+    app = create_app(_settings(), {})
 
     with TestClient(app) as client:
         response = client.get("/health/ready")
 
     assert response.status_code == 503
     assert response.json()["code"] == "readiness_not_configured"
+
+
+def test_default_readiness_checks_use_configured_services(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.main.urlopen",
+        lambda *_args, **_kwargs: nullcontext(SimpleNamespace(status=200)),
+        raising=False,
+    )
+    factory = sessionmaker(bind=create_engine("sqlite://"))
+    app = create_app(_settings(), session_factory=factory)
+
+    with TestClient(app) as client:
+        response = client.get("/health/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "ok",
+        "dependencies": {"postgres": "ok", "qdrant": "ok"},
+    }
+
+
+@pytest.mark.anyio
+async def test_synchronous_readiness_check_runs_off_the_event_loop() -> None:
+    event_loop_thread = get_ident()
+
+    assert await _run_check(lambda: get_ident() != event_loop_thread)
 
 
 @pytest.mark.parametrize("failure", [lambda: False, lambda: 1 / 0])

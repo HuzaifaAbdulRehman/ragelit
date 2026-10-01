@@ -65,8 +65,7 @@ def test_initial_migration_round_trip(empty_database_url: str) -> None:
         "fk_memberships_user_id_users",
     }
     assert {
-        constraint["name"]
-        for constraint in inspector.get_foreign_keys("group_members")
+        constraint["name"] for constraint in inspector.get_foreign_keys("group_members")
     } == {
         "fk_group_members_group_organization",
         "fk_group_members_membership",

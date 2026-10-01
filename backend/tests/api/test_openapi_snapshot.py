@@ -62,3 +62,16 @@ def test_protected_routes_document_bearer_auth_and_problem_responses(
         == "#/components/schemas/ProblemDetail"
     )
     assert "401" in schema["paths"]["/api/v1/auth/login"]["post"]["responses"]
+
+
+def test_validation_responses_document_problem_details(
+    tenant_settings: Settings,
+) -> None:
+    schema = _openapi_schema(tenant_settings)
+    response = schema["paths"]["/api/v1/auth/login"]["post"]["responses"]["422"]
+
+    assert set(response["content"]) == {"application/problem+json"}
+    assert (
+        response["content"]["application/problem+json"]["schema"]["$ref"]
+        == "#/components/schemas/ProblemDetail"
+    )

@@ -46,6 +46,33 @@ def _settings() -> Settings:
     )
 
 
+def test_application_role_has_only_required_global_table_privileges(
+    database_engines: tuple[Engine, Engine],
+) -> None:
+    admin_engine, _ = database_engines
+    with admin_engine.connect() as connection:
+        privileges = {
+            tuple(row)
+            for row in connection.execute(
+                text(
+                    """
+                    SELECT table_name, privilege_type
+                    FROM information_schema.role_table_grants
+                    WHERE grantee = 'ragelit_app'
+                      AND table_schema = 'public'
+                      AND table_name IN ('users', 'organizations')
+                    """
+                )
+            )
+        }
+
+    assert privileges == {
+        ("organizations", "SELECT"),
+        ("organizations", "UPDATE"),
+        ("users", "SELECT"),
+    }
+
+
 @pytest.fixture(scope="module")
 def database_engines() -> Iterator[tuple[Engine, Engine]]:
     database_name = f"ragelit_test_{uuid4().hex}"

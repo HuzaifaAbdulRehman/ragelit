@@ -80,9 +80,7 @@ def test_action_guard_uses_the_fixed_role_matrix(role: Role, action: Action) -> 
         assert response.json() == {"user_id": str(USER_ID)}
     else:
         assert response.status_code == 403
-        assert response.headers["content-type"].startswith(
-            "application/problem+json"
-        )
+        assert response.headers["content-type"].startswith("application/problem+json")
         assert response.json()["code"] == "action_forbidden"
 
 
