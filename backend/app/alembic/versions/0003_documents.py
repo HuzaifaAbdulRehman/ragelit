@@ -153,7 +153,7 @@ def upgrade() -> None:
         op.execute(f'ALTER TABLE "{table}" FORCE ROW LEVEL SECURITY')
         op.execute(
             f'CREATE POLICY "{table}_tenant" ON "{table}" '
-            f'USING ({MATCH}) WITH CHECK ({MATCH})'
+            f"USING ({MATCH}) WITH CHECK ({MATCH})"
         )
     for table, column in (
         ("document_versions", "document_id"),

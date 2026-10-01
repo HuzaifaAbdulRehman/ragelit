@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     refresh_session_days: int = Field(default=14, gt=0)
     max_upload_bytes: int = Field(default=25 * 1024 * 1024, gt=0)
     data_dir: Path = Path("../data")
+    qdrant_collection: str = "ragelit_chunks"
     allowed_origins: list[str] = Field(default_factory=list)
     cookie_secure: bool = False
 

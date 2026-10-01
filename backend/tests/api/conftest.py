@@ -15,6 +15,7 @@ from app.identity.models import User
 from app.main import create_app
 from app.tenancy.enums import Role
 from app.tenancy.models import Group, Membership, Organization
+from tests.api.document_support import vector_store as vector_store
 from tests.api.tenant_support import TenantApiSeed
 
 _PASSWORD = "correct password"
