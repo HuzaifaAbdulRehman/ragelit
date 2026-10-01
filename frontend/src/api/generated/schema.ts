@@ -72,6 +72,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chat/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Chat Query */
+        post: operations["chat_query_api_v1_chat_query_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/documents": {
         parameters: {
             query?: never;
@@ -101,6 +118,43 @@ export interface paths {
         get: operations["document_detail_api_v1_documents__document_id__get"];
         put?: never;
         post?: never;
+        /** Remove Document */
+        delete: operations["remove_document_api_v1_documents__document_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Access */
+        patch: operations["update_access_api_v1_documents__document_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry */
+        post: operations["retry_api_v1_documents__document_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Document Versions */
+        get: operations["document_versions_api_v1_documents__document_id__versions_get"];
+        put?: never;
+        /** Replace Upload */
+        post: operations["replace_upload_api_v1_documents__document_id__versions_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -229,6 +283,23 @@ export interface paths {
         patch: operations["change_member_role_route_api_v1_organizations__organization_id__members__membership_id__role_patch"];
         trace?: never;
     };
+    "/api/v1/query-runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Trace */
+        get: operations["trace_api_v1_query_runs__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health/live": {
         parameters: {
             query?: never;
@@ -267,6 +338,18 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AccessCommand */
+        AccessCommand: {
+            /** Group Ids */
+            group_ids?: string[];
+            /** User Ids */
+            user_ids?: string[];
+            /**
+             * Visibility
+             * @enum {string}
+             */
+            visibility: "organization" | "restricted";
+        };
         /** AccessTokenResponse */
         AccessTokenResponse: {
             /** Access Token */
@@ -281,6 +364,45 @@ export interface components {
         ActiveChange: {
             /** Is Active */
             is_active: boolean;
+        };
+        /** AnswerResponse */
+        AnswerResponse: {
+            /** Answer */
+            answer: string | null;
+            /** Citations */
+            citations: components["schemas"]["Citation"][];
+            /**
+             * Query Run Id
+             * Format: uuid
+             */
+            query_run_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "answered" | "abstained" | "failed";
+        };
+        /** Citation */
+        Citation: {
+            /**
+             * Chunk Id
+             * Format: uuid
+             */
+            chunk_id: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Filename */
+            filename: string;
+            /** Location */
+            location: string;
+            /**
+             * Version Id
+             * Format: uuid
+             */
+            version_id: string;
         };
         /** DocumentResponse */
         DocumentResponse: {
@@ -401,6 +523,16 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** QueryCommand */
+        QueryCommand: {
+            /**
+             * Limit
+             * @default 10
+             */
+            limit: number;
+            /** Question */
+            question: string;
+        };
         /**
          * Role
          * @enum {string}
@@ -410,6 +542,17 @@ export interface components {
         RoleChange: {
             role: components["schemas"]["Role"];
         };
+        /** StageResponse */
+        StageResponse: {
+            /** Chunk Ids */
+            chunk_ids: string[];
+            /** Decision */
+            decision: string;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Stage */
+            stage: string;
+        };
         /** SwitchOrganizationCommand */
         SwitchOrganizationCommand: {
             /**
@@ -417,6 +560,42 @@ export interface components {
              * Format: uuid
              */
             target_organization_id: string;
+        };
+        /** TraceResponse */
+        TraceResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Error Code */
+            error_code: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Stages */
+            stages: components["schemas"]["StageResponse"][];
+            /** State */
+            state: string;
+        };
+        /** VersionResponse */
+        VersionResponse: {
+            /** Chunk Count */
+            chunk_count: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** State */
+            state: string;
         };
     };
     responses: never;
@@ -603,6 +782,66 @@ export interface operations {
             };
         };
     };
+    chat_query_api_v1_chat_query_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QueryCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnswerResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Query dependency failure */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Query dependency failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Query dependency failure */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     documents_api_v1_documents_get: {
         parameters: {
             query?: {
@@ -679,6 +918,165 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    remove_document_api_v1_documents__document_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    update_access_api_v1_documents__document_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccessCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    retry_api_v1_documents__document_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    document_versions_api_v1_documents__document_id__versions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionResponse"][];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    replace_upload_api_v1_documents__document_id__versions_post: {
+        parameters: {
+            query: {
+                filename: string;
+            };
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1346,6 +1744,37 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProblemDetail"];
                     "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    trace_api_v1_query_runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraceResponse"];
                 };
             };
             /** @description Unprocessable Content */

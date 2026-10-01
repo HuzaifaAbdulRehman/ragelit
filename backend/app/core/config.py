@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     max_upload_bytes: int = Field(default=25 * 1024 * 1024, gt=0)
     data_dir: Path = Path("../data")
     qdrant_collection: str = "ragelit_chunks"
+    llm_base_url: AnyHttpUrl | None = None
+    llm_model: str = ""
+    llm_api_key: SecretStr = SecretStr("")
+    llm_timeout_seconds: int = Field(default=30, gt=0, le=30)
     allowed_origins: list[str] = Field(default_factory=list)
     cookie_secure: bool = False
 

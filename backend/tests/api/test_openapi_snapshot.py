@@ -75,3 +75,12 @@ def test_validation_responses_document_problem_details(
         response["content"]["application/problem+json"]["schema"]["$ref"]
         == "#/components/schemas/ProblemDetail"
     )
+
+
+def test_chat_failure_responses_use_problem_media_type(
+    tenant_settings: Settings,
+) -> None:
+    operation = _openapi_schema(tenant_settings)["paths"]["/api/v1/chat/query"]["post"]
+    for status in ("502", "503", "504"):
+        response = operation["responses"][status]
+        assert set(response["content"]) == {"application/problem+json"}

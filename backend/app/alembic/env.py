@@ -3,6 +3,7 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+from app.chat import models as chat_models
 from app.core.config import Settings
 from app.db.base import Base
 from app.documents import models as document_models
@@ -62,4 +63,4 @@ if context.is_offline_mode():
 else:
     run_migrations_online()
 
-_ = identity_models, tenancy_models, document_models
+_ = identity_models, tenancy_models, document_models, chat_models
