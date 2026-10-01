@@ -84,3 +84,14 @@ def test_chat_failure_responses_use_problem_media_type(
     for status in ("502", "503", "504"):
         response = operation["responses"][status]
         assert set(response["content"]) == {"application/problem+json"}
+
+
+def test_upload_contract_exposes_the_raw_binary_body(tenant_settings: Settings) -> None:
+    paths = _openapi_schema(tenant_settings)["paths"]
+    for path in ("/api/v1/documents", "/api/v1/documents/{document_id}/versions"):
+        body = paths[path]["post"]["requestBody"]
+        assert body["required"] is True
+        assert body["content"]["application/octet-stream"]["schema"] == {
+            "type": "string",
+            "format": "binary",
+        }

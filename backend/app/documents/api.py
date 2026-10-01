@@ -22,12 +22,24 @@ from app.tenancy.policy import Action
 from app.tenancy.scope import RequestPrincipal
 
 router = APIRouter(prefix="/documents", tags=["documents"])
+BINARY_UPLOAD = {
+    "requestBody": {
+        "required": True,
+        "content": {
+            "application/octet-stream": {
+                "schema": {"type": "string", "format": "binary"}
+            }
+        },
+    }
+}
 DocumentManager = Annotated[
     RequestPrincipal, Depends(require_action(Action.DOCUMENTS_MANAGE))
 ]
 
 
-@router.post("", status_code=202, response_model=DocumentResponse)
+@router.post(
+    "", status_code=202, response_model=DocumentResponse, openapi_extra=BINARY_UPLOAD
+)
 async def upload_document(
     request: Request,
     principal: DocumentManager,
@@ -137,7 +149,10 @@ def document_versions(
 
 
 @router.post(
-    "/{document_id}/versions", status_code=202, response_model=DocumentResponse
+    "/{document_id}/versions",
+    status_code=202,
+    response_model=DocumentResponse,
+    openapi_extra=BINARY_UPLOAD,
 )
 async def replace_upload(
     document_id: UUID,

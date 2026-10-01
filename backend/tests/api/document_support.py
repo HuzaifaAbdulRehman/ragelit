@@ -20,12 +20,14 @@ class TestEmbeddings:
 
 @pytest.fixture
 def vector_store() -> Iterator[QdrantChunkStore]:
-    client = QdrantClient(url="http://127.0.0.1:6333", timeout=5)
+    client = QdrantClient(url="http://127.0.0.1:6333", timeout=30)
     name = f"ragelit_test_{uuid4().hex}"
     store = QdrantChunkStore(client, name, dimension=4)
-    store.ensure_collection()
     try:
+        store.ensure_collection()
         yield store
     finally:
-        client.delete_collection(name)
-        client.close()
+        try:
+            client.delete_collection(name)
+        finally:
+            client.close()

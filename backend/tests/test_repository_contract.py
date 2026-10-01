@@ -32,3 +32,12 @@ def test_ci_includes_security_gates() -> None:
 
     assert "gitleaks/gitleaks-action@v2" in workflow
     assert "actions/dependency-review-action@v4" in workflow
+
+
+def test_ci_runs_real_vector_store_and_compose_stays_local() -> None:
+    workflow = (_repo_root() / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    compose = (_repo_root() / "compose.yml").read_text(encoding="utf-8")
+    assert "qdrant/qdrant:v1.15.4" in workflow
+    assert "6333:6333" in workflow
+    for port in (5432, 6333, 6334):
+        assert f'"127.0.0.1:{port}:{port}"' in compose
