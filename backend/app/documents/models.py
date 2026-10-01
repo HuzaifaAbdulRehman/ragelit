@@ -56,7 +56,8 @@ class DocumentVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ),
         CheckConstraint("byte_count > 0", name="positive_size"),
         CheckConstraint(
-            "state IN ('queued', 'processing', 'ready', 'failed', 'deleted')",
+            "state IN ('queued', 'processing', 'ready', 'failed', 'deleted', "
+            "'superseded')",
             name="state",
         ),
     )

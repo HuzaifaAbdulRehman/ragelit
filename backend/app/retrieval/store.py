@@ -150,6 +150,7 @@ class QdrantChunkStore:
             ),
             wait=True,
         )
+
         self.client.set_payload(
             self.collection_name,
             payload={
@@ -159,5 +160,42 @@ class QdrantChunkStore:
                 "allowed_group_ids": [str(value) for value in context.group_ids],
             },
             points=self._claim_filter(context),
+            wait=True,
+        )
+
+    def set_access(
+        self,
+        organization_id: UUID,
+        document_id: UUID,
+        visibility: str,
+        users: tuple[UUID, ...],
+        groups: tuple[UUID, ...],
+    ) -> None:
+        self.client.set_payload(
+            self.collection_name,
+            payload={
+                "visibility": visibility,
+                "allowed_user_ids": [str(value) for value in users],
+                "allowed_group_ids": [str(value) for value in groups],
+            },
+            points=models.Filter(
+                must=[
+                    field_match("organization_id", str(organization_id)),
+                    field_match("document_id", str(document_id)),
+                ]
+            ),
+            wait=True,
+        )
+
+    def deactivate(self, organization_id: UUID, document_id: UUID) -> None:
+        self.client.set_payload(
+            self.collection_name,
+            payload={"active": False},
+            points=models.Filter(
+                must=[
+                    field_match("organization_id", str(organization_id)),
+                    field_match("document_id", str(document_id)),
+                ]
+            ),
             wait=True,
         )

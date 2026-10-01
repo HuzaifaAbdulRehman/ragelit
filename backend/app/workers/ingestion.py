@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 from qdrant_client import QdrantClient
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import Settings
@@ -16,6 +16,7 @@ from app.documents.models import Document, DocumentGrant, DocumentVersion, Inges
 from app.documents.storage import storage_path
 from app.retrieval.embeddings import EmbeddingProvider, FastEmbedProvider
 from app.retrieval.store import IndexContext, QdrantChunkStore
+from app.tenancy.models import Organization
 from app.tenancy.rls import set_request_context
 
 
@@ -33,6 +34,11 @@ class JobClaim:
 
 def _context(session: Session, organization_id: UUID) -> None:
     set_request_context(session, user_id=UUID(int=0), organization_id=organization_id)
+    session.execute(
+        select(Organization.id)
+        .where(Organization.id == organization_id)
+        .with_for_update()
+    )
 
 
 def claim_job(
@@ -151,6 +157,15 @@ def run_once(
             document = session.get(Document, claim.document_id)
             assert version is not None and document is not None
             version.state = document.state = job.state = "ready"
+            session.execute(
+                update(DocumentVersion)
+                .where(
+                    DocumentVersion.document_id == document.id,
+                    DocumentVersion.id != version.id,
+                    DocumentVersion.state == "ready",
+                )
+                .values(state="superseded")
+            )
             version.chunk_count = len(chunks)
             job.lease_until = None
             session.commit()
