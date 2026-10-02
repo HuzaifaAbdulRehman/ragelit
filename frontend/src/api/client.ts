@@ -15,13 +15,14 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(
+export async function request<T>(
   path: string,
   init: RequestInit = {},
   accessToken?: string,
 ): Promise<T> {
   const headers = new Headers(init.headers)
-  if (init.body) headers.set("Content-Type", "application/json")
+  if (init.body && !headers.has("Content-Type"))
+    headers.set("Content-Type", "application/json")
   if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`)
   const response = await fetch(path, {
     ...init,
@@ -29,10 +30,36 @@ async function request<T>(
     credentials: "include",
   })
   if (!response.ok) {
-    throw new ApiError(
-      response.status,
-      (await response.json()) as ProblemDetail,
-    )
+    let body: unknown
+    try {
+      body = await response.json()
+    } catch {
+      body = null
+    }
+    const safe: ProblemDetail = {
+      type: "about:blank",
+      title: "Request failed",
+      code: "request_failed",
+      status: response.status,
+      detail: "Request failed. Please retry.",
+    }
+    if (
+      body &&
+      typeof body === "object" &&
+      "code" in body &&
+      typeof body.code === "string" &&
+      "detail" in body &&
+      typeof body.detail === "string"
+    ) {
+      throw new ApiError(response.status, {
+        ...safe,
+        ...body,
+        code: body.code,
+        detail: body.detail,
+        status: response.status,
+      })
+    }
+    throw new ApiError(response.status, safe)
   }
   if (response.status === 204) return undefined as T
   return (await response.json()) as T
@@ -48,10 +75,10 @@ export const api = {
     request<TokenResponse>("/api/v1/auth/refresh", { method: "POST" }),
   logout: (token: string) =>
     request<void>("/api/v1/auth/logout", { method: "POST" }, token),
-  organizations: (token: string) =>
+  organizations: (token: string, signal?: AbortSignal) =>
     request<components["schemas"]["OrganizationList"]>(
       "/api/v1/organizations",
-      {},
+      { signal },
       token,
     ),
   switchOrganization: (token: string, targetOrganizationId: string) =>

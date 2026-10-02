@@ -48,6 +48,23 @@ export function LoginPage() {
         <h2 id="login-title">Welcome back</h2>
         <p>Use your organization credentials to continue.</p>
         <form onSubmit={submit}>
+          {auth.sessionMessage && (
+            <p
+              role={auth.revocationFailed ? "alert" : "status"}
+              className="form-error"
+            >
+              {auth.sessionMessage}
+            </p>
+          )}
+          {auth.revocationFailed && (
+            <button
+              type="button"
+              disabled={auth.logoutPending}
+              onClick={() => void auth.logout()}
+            >
+              Retry log out
+            </button>
+          )}
           <label>
             Work email
             <input name="email" type="email" autoComplete="email" required />
@@ -70,7 +87,10 @@ export function LoginPage() {
               {error}
             </p>
           ) : null}
-          <button type="submit" disabled={submitting}>
+          <button
+            type="submit"
+            disabled={submitting || auth.logoutPending || auth.revocationFailed}
+          >
             {submitting ? "Signing in…" : "Sign in"}
           </button>
         </form>

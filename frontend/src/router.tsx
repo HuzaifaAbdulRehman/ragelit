@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query"
 import {
   createRootRoute,
   createRoute,
@@ -5,12 +6,14 @@ import {
   Outlet,
   useParams,
 } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
 
-import { ApiError, api, type MemberList } from "./api/client"
+import { ApiError } from "./api/client"
+import { tenancyApi } from "./api/tenancy"
 import { useAuth } from "./features/auth/AuthProvider"
 import { LoginPage } from "./features/auth/LoginPage"
 import { AppShell } from "./features/shell/AppShell"
+import { RequestError } from "./features/shell/RequestError"
+import { useWorkspace } from "./features/shell/WorkspaceBoundary"
 
 const rootRoute = createRootRoute({ component: () => <Outlet /> })
 const loginRoute = createRoute({
@@ -51,21 +54,13 @@ function Dashboard() {
 
 function MembersPage() {
   const { organizationId } = useParams({ strict: false })
-  const auth = useAuth()
-  const [members, setMembers] = useState<MemberList | null>(null)
-  const [notFound, setNotFound] = useState(false)
-
-  useEffect(() => {
-    if (!auth.accessToken || !organizationId) return
-    api
-      .members(auth.accessToken, organizationId)
-      .then(setMembers)
-      .catch((error) => {
-        if (error instanceof ApiError && error.status === 404) setNotFound(true)
-      })
-  }, [auth.accessToken, organizationId])
-
-  if (notFound) {
+  const scope = useWorkspace()
+  const members = useQuery({
+    queryKey: [...scope.key, "members", organizationId],
+    queryFn: ({ signal }) =>
+      tenancyApi.members(scope.token, organizationId ?? "", 50, 0, signal),
+  })
+  if (members.error instanceof ApiError && members.error.status === 404) {
     return (
       <section>
         <h1>Not found</h1>
@@ -77,8 +72,12 @@ function MembersPage() {
     <section>
       <p className="eyebrow">Access management</p>
       <h1>People</h1>
+      <RequestError
+        error={members.error}
+        retry={() => void members.refetch()}
+      />
       <ul className="member-list">
-        {members?.items.map((member) => (
+        {members.data?.items.map((member) => (
           <li key={member.id}>
             <span>{member.email}</span>
             <strong>{member.role}</strong>

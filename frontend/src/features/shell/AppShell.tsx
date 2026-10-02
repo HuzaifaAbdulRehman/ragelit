@@ -2,6 +2,7 @@ import { Link, Navigate, Outlet, useNavigate } from "@tanstack/react-router"
 
 import { useAuth } from "../auth/AuthProvider"
 import { OrganizationSwitcher } from "./OrganizationSwitcher"
+import { WorkspaceBoundary } from "./WorkspaceBoundary"
 
 export function AppShell() {
   const auth = useAuth()
@@ -46,7 +47,11 @@ export function AppShell() {
         </button>
       </aside>
       <main className="workspace">
-        <Outlet />
+        <WorkspaceBoundary
+          key={`${auth.currentOrganization?.id}:${auth.workspaceRevision}`}
+        >
+          <Outlet />
+        </WorkspaceBoundary>
       </main>
     </div>
   )
