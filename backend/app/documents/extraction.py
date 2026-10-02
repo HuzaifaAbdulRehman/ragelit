@@ -39,6 +39,9 @@ class TextSection:
 
 
 def _extract_pdf(path: Path) -> list[TextSection]:
+    creationflags = 0
+    if sys.platform == "win32":
+        creationflags = subprocess.CREATE_NO_WINDOW
     environment = {
         key: os.environ[key]
         for key in ("SystemRoot", "SYSTEMROOT", "WINDIR", "PATH", "TEMP", "TMP")
@@ -57,7 +60,7 @@ def _extract_pdf(path: Path) -> list[TextSection]:
             timeout=30,
             check=False,
             env=environment,
-            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+            creationflags=creationflags,
         )
     except subprocess.TimeoutExpired as error:
         raise DocumentError("extraction_limit") from error
