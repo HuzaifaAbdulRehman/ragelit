@@ -28,3 +28,9 @@ class VersionResponse(BaseModel):
     state: str
     chunk_count: int
     created_at: datetime
+
+
+class AccessResponse(BaseModel):
+    visibility: str
+    user_ids: list[UUID]
+    group_ids: list[UUID]

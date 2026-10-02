@@ -3,13 +3,14 @@ import {
   createRoute,
   createRouter,
   Outlet,
-  useParams,
 } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
-
-import { ApiError, api, type MemberList } from "./api/client"
+import { GroupsPage } from "./features/admin/GroupsPage"
+import { PeoplePage } from "./features/admin/PeoplePage"
 import { useAuth } from "./features/auth/AuthProvider"
 import { LoginPage } from "./features/auth/LoginPage"
+import { ChatPage } from "./features/chat/ChatPage"
+import { DocumentDetailPage } from "./features/documents/DocumentDetailPage"
+import { DocumentsPage } from "./features/documents/DocumentsPage"
 import { AppShell } from "./features/shell/AppShell"
 
 const rootRoute = createRootRoute({ component: () => <Outlet /> })
@@ -23,7 +24,6 @@ const shellRoute = createRoute({
   id: "shell",
   component: AppShell,
 })
-
 function Dashboard() {
   const { currentOrganization } = useAuth()
   return (
@@ -48,47 +48,6 @@ function Dashboard() {
     </section>
   )
 }
-
-function MembersPage() {
-  const { organizationId } = useParams({ strict: false })
-  const auth = useAuth()
-  const [members, setMembers] = useState<MemberList | null>(null)
-  const [notFound, setNotFound] = useState(false)
-
-  useEffect(() => {
-    if (!auth.accessToken || !organizationId) return
-    api
-      .members(auth.accessToken, organizationId)
-      .then(setMembers)
-      .catch((error) => {
-        if (error instanceof ApiError && error.status === 404) setNotFound(true)
-      })
-  }, [auth.accessToken, organizationId])
-
-  if (notFound) {
-    return (
-      <section>
-        <h1>Not found</h1>
-        <p>The requested resource was not found.</p>
-      </section>
-    )
-  }
-  return (
-    <section>
-      <p className="eyebrow">Access management</p>
-      <h1>People</h1>
-      <ul className="member-list">
-        {members?.items.map((member) => (
-          <li key={member.id}>
-            <span>{member.email}</span>
-            <strong>{member.role}</strong>
-          </li>
-        ))}
-      </ul>
-    </section>
-  )
-}
-
 const dashboardRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: "/",
@@ -97,15 +56,41 @@ const dashboardRoute = createRoute({
 const membersRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: "/organizations/$organizationId/members",
-  component: MembersPage,
+  component: PeoplePage,
+})
+const groupsRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/organizations/$organizationId/groups",
+  component: GroupsPage,
+})
+const documentsRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/documents",
+  component: DocumentsPage,
+})
+const documentRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/documents/$documentId",
+  remountDeps: ({ params }) => params.documentId,
+  component: DocumentDetailPage,
+})
+const chatRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/chat",
+  component: ChatPage,
 })
 const routeTree = rootRoute.addChildren([
   loginRoute,
-  shellRoute.addChildren([dashboardRoute, membersRoute]),
+  shellRoute.addChildren([
+    dashboardRoute,
+    membersRoute,
+    groupsRoute,
+    documentsRoute,
+    documentRoute,
+    chatRoute,
+  ]),
 ])
-
 export const router = createRouter({ routeTree })
-
 declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router

@@ -31,6 +31,7 @@ from app.tenancy.service import (
     change_member_role,
     create_group,
     delete_group,
+    list_group_members,
     list_groups,
     list_members,
     list_my_organizations,
@@ -297,6 +298,31 @@ def add_group_member_route(
     except TenancyError as error:
         _raise_service_error(error)
     return Response(status_code=204)
+
+
+@router.get(
+    "/organizations/{organization_id}/groups/{group_id}/members",
+    responses=TENANT_RESPONSES,
+)
+def group_members_route(
+    organization_id: UUID,
+    group_id: UUID,
+    principal: GroupManager,
+    session: DatabaseSession,
+    limit: PageLimit = 50,
+    offset: PageOffset = 0,
+) -> MemberList:
+    try:
+        rows = list_group_members(
+            principal, group_id, session=session, limit=limit, offset=offset
+        )
+    except TenancyError as error:
+        _raise_service_error(error)
+    return MemberList(
+        items=[_member_summary(membership, user) for membership, user in rows],
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.delete(

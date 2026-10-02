@@ -13,20 +13,23 @@ dependencies = [
     "sqlalchemy>=2.0,<3",
     "pypdf>=6.19,<7",
     "qdrant-client>=1.15,<1.16",
-    "fastembed>=0.7,<0.8",
+    "fastembed>=0.8.1,<0.9",
     "httpx2>=2.13.1,<3",
 ]
 
 [dependency-groups]
 dev = [
     "mypy>=1.14,<2",
-    "pytest>=8.3,<9",
+    "pytest>=9.0.3,<10",
     "ruff>=0.9,<1",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.uv]
+constraint-dependencies = ["pillow>=12.3,<13"]
 
 [tool.ruff]
 target-version = "py312"

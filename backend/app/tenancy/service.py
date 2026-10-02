@@ -190,6 +190,41 @@ def create_group(
     return group
 
 
+def list_group_members(
+    principal: RequestPrincipal,
+    group_id: UUID,
+    *,
+    session: Session,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[tuple[Membership, User]]:
+    group = session.scalar(
+        select(Group).where(
+            Group.id == group_id,
+            Group.organization_id == principal.organization_id,
+        )
+    )
+    if group is None:
+        raise _not_found()
+    rows = session.execute(
+        select(Membership, User)
+        .join(User, User.id == Membership.user_id)
+        .join(
+            GroupMember,
+            (GroupMember.user_id == Membership.user_id)
+            & (GroupMember.organization_id == Membership.organization_id),
+        )
+        .where(
+            Membership.organization_id == principal.organization_id,
+            GroupMember.group_id == group_id,
+        )
+        .order_by(User.email, Membership.id)
+        .limit(limit)
+        .offset(offset)
+    )
+    return [(membership, user) for membership, user in rows]
+
+
 def _locked_group(
     principal: RequestPrincipal,
     group_id: UUID,

@@ -24,6 +24,9 @@ function Invoke-Gate {
 Push-Location $RepoRoot
 try {
     Invoke-Gate 'Compose configuration' 'docker' @('compose', 'config', '--quiet')
+    Invoke-Gate 'Fixture process cleanup' 'node' @(
+        '--test', 'scripts/tests/e2e-processes.test.mjs'
+    )
 
     Push-Location 'backend'
     try {
@@ -37,6 +40,14 @@ try {
         Invoke-Gate 'Backend types' 'uv' @(
             'run', 'mypy', 'app', 'tests'
         )
+        Invoke-Gate 'CI script format' 'uv' @(
+            'run', 'ruff', 'format', '--check', '--config', 'pyproject.toml',
+            '../scripts'
+        )
+        Invoke-Gate 'CI script lint' 'uv' @(
+            'run', 'ruff', 'check', '--config', 'pyproject.toml', '../scripts'
+        )
+        Invoke-Gate 'CI script types' 'uv' @('run', 'mypy', '../scripts')
         Invoke-Gate 'Backend unit tests' 'uv' @(
             'run', 'pytest', 'tests/unit', 'tests/api/test_health.py',
             'tests/test_repository_contract.py', '-q'
@@ -65,8 +76,8 @@ try {
         )
         Invoke-Gate 'Frontend checks' 'npm.cmd' @('run', 'check')
         Invoke-Gate 'Frontend build' 'npm.cmd' @('run', 'build')
-        Invoke-Gate 'Browser smoke tests' 'npm.cmd' @(
-            'run', 'test', '--', 'auth.spec.ts', 'tenant-navigation.spec.ts'
+        Invoke-Gate 'Browser journeys' 'npm.cmd' @(
+            'run', 'test', '--', '--reporter=line'
         )
     }
     finally {

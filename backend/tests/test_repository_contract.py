@@ -1,3 +1,4 @@
+import json
 import subprocess
 from pathlib import Path
 
@@ -31,7 +32,7 @@ def test_ci_includes_security_gates() -> None:
     workflow = (_repo_root() / ".github/workflows/ci.yml").read_text(encoding="utf-8")
 
     assert "gitleaks/gitleaks-action@v2" in workflow
-    assert "actions/dependency-review-action@v4" in workflow
+    assert "python3 scripts/audit_dependencies.py" in workflow
 
 
 def test_ci_runs_real_vector_store_and_compose_stays_local() -> None:
@@ -41,3 +42,24 @@ def test_ci_runs_real_vector_store_and_compose_stays_local() -> None:
     assert "6333:6333" in workflow
     for port in (5432, 6333, 6334):
         assert f'"127.0.0.1:{port}:{port}"' in compose
+
+
+def test_verification_runs_all_browser_journeys() -> None:
+    for name in ("verify.ps1", "verify.sh"):
+        script = (_repo_root() / "scripts" / name).read_text(encoding="utf-8")
+        assert "Browser journeys" in script
+        assert "auth.spec.ts" not in script
+        assert "tenant-navigation.spec.ts" not in script
+
+
+def test_browser_journeys_use_the_production_bundle() -> None:
+    config = (_repo_root() / "frontend" / "playwright.config.ts").read_text(
+        encoding="utf-8"
+    )
+    assert "npm run build" in config
+    assert "npm run preview" in config
+    assert "npm run dev" not in config
+    package = json.loads(
+        (_repo_root() / "frontend" / "package.json").read_text(encoding="utf-8")
+    )
+    assert package["scripts"]["preview"] == "vite preview"

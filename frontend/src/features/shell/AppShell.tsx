@@ -2,6 +2,7 @@ import { Link, Navigate, Outlet, useNavigate } from "@tanstack/react-router"
 
 import { useAuth } from "../auth/AuthProvider"
 import { OrganizationSwitcher } from "./OrganizationSwitcher"
+import { WorkspaceBoundary } from "./WorkspaceBoundary"
 
 export function AppShell() {
   const auth = useAuth()
@@ -30,7 +31,8 @@ export function AppShell() {
         <OrganizationSwitcher />
         <nav aria-label="Workspace navigation">
           <Link to="/">Overview</Link>
-          <span aria-disabled="true">Documents</span>
+          <Link to="/documents">Documents</Link>
+          <Link to="/chat">Chat</Link>
           {canManage && auth.currentOrganization ? (
             <Link
               to="/organizations/$organizationId/members"
@@ -39,6 +41,14 @@ export function AppShell() {
               People
             </Link>
           ) : null}
+          {canManage && auth.currentOrganization && (
+            <Link
+              to="/organizations/$organizationId/groups"
+              params={{ organizationId: auth.currentOrganization.id }}
+            >
+              Groups
+            </Link>
+          )}
           <span aria-disabled="true">Audit</span>
         </nav>
         <button className="secondary" type="button" onClick={logout}>
@@ -46,7 +56,11 @@ export function AppShell() {
         </button>
       </aside>
       <main className="workspace">
-        <Outlet />
+        <WorkspaceBoundary
+          key={`${auth.currentOrganization?.id}:${auth.workspaceRevision}`}
+        >
+          <Outlet />
+        </WorkspaceBoundary>
       </main>
     </div>
   )
