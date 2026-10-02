@@ -32,5 +32,5 @@ run_gate "Generated API diff" \
   git -C "$repo_root" diff --exit-code -- frontend/src/api/generated/schema.ts
 run_gate "Frontend checks" npm run check
 run_gate "Frontend build" npm run build
-run_gate "Browser smoke tests" \
-  npm run test -- auth.spec.ts tenant-navigation.spec.ts
+run_gate "Browser journeys" \
+  npm run test -- --reporter=line

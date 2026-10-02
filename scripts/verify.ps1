@@ -65,8 +65,8 @@ try {
         )
         Invoke-Gate 'Frontend checks' 'npm.cmd' @('run', 'check')
         Invoke-Gate 'Frontend build' 'npm.cmd' @('run', 'build')
-        Invoke-Gate 'Browser smoke tests' 'npm.cmd' @(
-            'run', 'test', '--', 'auth.spec.ts', 'tenant-navigation.spec.ts'
+        Invoke-Gate 'Browser journeys' 'npm.cmd' @(
+            'run', 'test', '--', '--reporter=line'
         )
     }
     finally {

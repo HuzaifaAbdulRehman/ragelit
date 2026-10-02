@@ -1,12 +1,12 @@
 # RAGelit
 
-RAGelit is a multi-tenant document assistant in active development. The backend
-can ingest documents, run permission-aware hybrid search, and return answers
-with checked citation IDs. The web app currently covers login and organization
-management; document upload and chat screens are the next milestone.
+RAGelit is a multi-tenant document assistant in active development. Owners and
+admins can manage groups, upload documents, and edit reading access in one web
+portal. Members can ask questions over permitted evidence and inspect cited
+answers or their own query traces.
 
-Automated privacy audits and retrieval benchmarks are still planned. This is
-a development build, not a production deployment.
+Automated privacy audits, retrieval benchmarks, and live streaming are still
+planned. This is a development build, not a production deployment.
 
 ## Run locally
 
@@ -42,6 +42,23 @@ npm run dev
 
 Open <http://localhost:5173/login>. API documentation is at
 <http://localhost:8000/docs>.
+
+## Use the portal
+
+Sign in as `owner@northstar.example` with the password printed by the seed.
+People changes existing members' roles and activation; it does not send
+invitations. In Groups, create a team and add an existing member.
+
+Open Documents and upload a supported file. It starts restricted. Run the
+organization's ingestion worker (see below) and wait for Ready, then use Edit
+access to grant a person, a group, or the whole organization permission to
+read. Managing a document does not itself grant reading access.
+
+Sign in as the granted member and open Chat. Answers show filename/location
+citations; View query trace shows the caller's stage decisions and timings.
+After revocation, new questions cannot use that evidence. Existing answers
+are not retroactively erased from an open session. Generation requires the
+server configuration below. Without permitted evidence, the app abstains.
 
 ## Upload and ask through the API
 
@@ -129,7 +146,8 @@ returns `503` and queues repair instead of reporting success.
 
 Tests need disposable PostgreSQL at `127.0.0.1:5432` (database, user, and password
 all `postgres`) and Qdrant at `127.0.0.1:6333`. Do not use valuable databases:
-browser tests recreate `ragelit_e2e`. Stop development services before starting
+browser tests recreate the dedicated `ragelit_e2e` database and collection.
+Stop development services before starting
 these test containers:
 
 ```console
@@ -141,13 +159,22 @@ docker run --rm --name ragelit-qdrant-test -p 127.0.0.1:6333:6333 -d qdrant/qdra
 Run `powershell -File scripts/verify.ps1` on Windows or
 `bash scripts/verify.sh` on macOS/Linux. Both check Compose, backend formatting
 and types, PostgreSQL/Qdrant tests, generated contracts, the frontend build, and
-browser journeys. Tests use deterministic embeddings and generation fixtures;
-they need no paid model and do not measure answer quality.
+browser journeys. Browser tests use the real API, worker, PostgreSQL, and Qdrant
+with test-only four-dimensional embeddings and an extractive generator. They
+check access boundaries and UI behavior, not relevance or real-model answer
+quality. Fixtures use a separate temporary upload directory and require the
+dedicated local test targets. No paid model is called.
+
+On 2 October 2026, `powershell -NoProfile -File scripts/verify.ps1` exited 0
+on Windows with local PostgreSQL 16 and Qdrant 1.15.4: 65 unit checks,
+156 integration/API checks, and 37 browser tests. Static checks,
+generated-contract drift, and the production build also passed. This does
+not verify Linux/PostgreSQL 18 CI or the quality of a real model.
 
 ```console
 docker stop ragelit-postgres-test ragelit-qdrant-test
 ```
 
 CI also runs secret scanning and reviews dependency changes on pull requests.
-Billing, invitations, document/chat UI, audit packs, and benchmark comparisons
+Billing, invitations, automated audits, streaming, and benchmark comparisons
 remain separate milestones.

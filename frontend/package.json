@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "preview": "vite preview",
     "generate:api": "openapi-typescript ../backend/openapi.json -o src/api/generated/schema.ts",
     "build": "tsc --noEmit && vite build",
     "check": "biome check . && tsc --noEmit",

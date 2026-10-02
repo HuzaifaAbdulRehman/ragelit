@@ -164,22 +164,32 @@ test("raw upload preserves explicit content type and bytes", async ({
   page,
 }) => {
   await signIn(page)
-  await page.route("**/api/v1/documents?*", (route) =>
-    route.fulfill({ status: 202, json: { ...document, state: "queued" } }),
-  )
-  const upload = page.waitForRequest("**/api/v1/documents?*")
-  const sending = page.evaluate(async () => {
-    const modulePath = "/src/api/documents.ts"
-    const { documentsApi } = await import(modulePath)
-    await documentsApi.upload(
-      "test-only-token",
-      new File(["plain bytes"], "a & b.txt"),
-    )
+  await page.route("**/api/v1/documents**", (route) => {
+    if (route.request().method() === "POST")
+      return route.fulfill({
+        status: 202,
+        json: { ...document, state: "queued" },
+      })
+    if (new URL(route.request().url()).pathname.endsWith(document.id))
+      return route.fulfill({ json: document })
+    return route.fulfill({ json: [] })
   })
-  const result = await Promise.all([upload, sending])
-  expect(result[0].headers()["content-type"]).toBe("application/octet-stream")
-  expect(result[0].postData()).toBe("plain bytes")
-  expect(new URL(result[0].url()).searchParams.get("filename")).toBe(
-    "a & b.txt",
+  await page.getByRole("link", { name: "Documents", exact: true }).click()
+  await page.getByLabel("Document file").setInputFiles({
+    name: "a & b.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("plain bytes"),
+  })
+  const upload = page.waitForRequest(
+    (request) =>
+      request.method() === "POST" &&
+      new URL(request.url()).pathname === "/api/v1/documents",
   )
+  await page
+    .getByRole("button", { name: "Upload document", exact: true })
+    .click()
+  const request = await upload
+  expect(request.headers()["content-type"]).toBe("application/octet-stream")
+  expect(request.postData()).toBe("plain bytes")
+  expect(new URL(request.url()).searchParams.get("filename")).toBe("a & b.txt")
 })
