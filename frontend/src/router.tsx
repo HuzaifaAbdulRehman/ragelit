@@ -71,6 +71,7 @@ const documentsRoute = createRoute({
 const documentRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: "/documents/$documentId",
+  remountDeps: ({ params }) => params.documentId,
   component: DocumentDetailPage,
 })
 const chatRoute = createRoute({

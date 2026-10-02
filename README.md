@@ -157,17 +157,17 @@ docker run --rm --name ragelit-qdrant-test -p 127.0.0.1:6333:6333 -d qdrant/qdra
 ```
 
 Run `powershell -File scripts/verify.ps1` on Windows or
-`bash scripts/verify.sh` on macOS/Linux. Both check Compose, backend formatting
+`bash scripts/verify.sh` on macOS/Linux. Both scripts check Compose, backend formatting
 and types, PostgreSQL/Qdrant tests, generated contracts, the frontend build, and
 browser journeys. Browser tests use the real API, worker, PostgreSQL, and Qdrant
 with test-only four-dimensional embeddings and an extractive generator. They
 check access boundaries and UI behavior, not relevance or real-model answer
 quality. Fixtures use a separate temporary upload directory and require the
-dedicated local test targets. No paid model is called.
+dedicated local test targets. These tests do not call a paid model.
 
 On 2 October 2026, `powershell -NoProfile -File scripts/verify.ps1` exited 0
 on Windows with local PostgreSQL 16 and Qdrant 1.15.4: 65 unit checks,
-156 integration/API checks, and 37 browser tests. Static checks,
+156 integration/API checks, and 41 browser tests. Static checks,
 generated-contract drift, and the production build also passed. This does
 not verify Linux/PostgreSQL 18 CI or the quality of a real model.
 
