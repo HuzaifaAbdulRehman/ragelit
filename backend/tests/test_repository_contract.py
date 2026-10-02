@@ -32,7 +32,7 @@ def test_ci_includes_security_gates() -> None:
     workflow = (_repo_root() / ".github/workflows/ci.yml").read_text(encoding="utf-8")
 
     assert "gitleaks/gitleaks-action@v2" in workflow
-    assert "actions/dependency-review-action@v4" in workflow
+    assert "python3 scripts/audit_dependencies.py" in workflow
 
 
 def test_ci_runs_real_vector_store_and_compose_stays_local() -> None:

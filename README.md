@@ -175,6 +175,11 @@ not verify Linux/PostgreSQL 18 CI or the quality of a real model.
 docker stop ragelit-postgres-test ragelit-qdrant-test
 ```
 
-CI also runs secret scanning and reviews dependency changes on pull requests.
+CI scans for secrets and audits both committed lockfiles with OSV 2.6.0.
+The workflow downloads public npm and PyPI vulnerability databases, then
+scans offline without sending the dependency inventory to an external API.
+Missing inputs, invalid advisory records, scanner errors, and known
+vulnerabilities fail the check. The audit does not establish exploitability.
+
 Billing, invitations, automated audits, streaming, and benchmark comparisons
 remain separate milestones.

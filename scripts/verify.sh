@@ -12,12 +12,16 @@ run_gate() {
 
 cd "$repo_root"
 run_gate "Compose configuration" docker compose config --quiet
+run_gate "Fixture process cleanup" node --test scripts/tests/e2e-processes.test.mjs
 
 cd "$repo_root/backend"
 run_gate "Backend dependencies" uv sync --frozen
 run_gate "Backend format" uv run ruff format --check app tests
 run_gate "Backend lint" uv run ruff check app tests
+run_gate "CI script format" uv run ruff format --check --config pyproject.toml ../scripts
+run_gate "CI script lint" uv run ruff check --config pyproject.toml ../scripts
 run_gate "Backend types" uv run mypy app tests
+run_gate "CI script types" uv run mypy ../scripts
 run_gate "Backend unit tests" \
   uv run pytest tests/unit tests/api/test_health.py \
   tests/test_repository_contract.py -q
