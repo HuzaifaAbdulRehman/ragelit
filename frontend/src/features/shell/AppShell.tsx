@@ -40,6 +40,14 @@ export function AppShell() {
               People
             </Link>
           ) : null}
+          {canManage && auth.currentOrganization && (
+            <Link
+              to="/organizations/$organizationId/groups"
+              params={{ organizationId: auth.currentOrganization.id }}
+            >
+              Groups
+            </Link>
+          )}
           <span aria-disabled="true">Audit</span>
         </nav>
         <button className="secondary" type="button" onClick={logout}>

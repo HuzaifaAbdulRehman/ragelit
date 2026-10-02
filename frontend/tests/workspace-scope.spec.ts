@@ -24,7 +24,9 @@ test("switch hides private content before the new session arrives", async ({
     }),
   )
   await page.getByRole("link", { name: "People" }).click()
-  await expect(page.getByText("Old workspace secret")).toBeVisible()
+  await expect(
+    page.getByText("Old workspace secret", { exact: true }),
+  ).toBeVisible()
   let release!: () => void
   const gate = new Promise<void>((resolve) => {
     release = resolve
@@ -96,7 +98,7 @@ test("logout during a request hides the view before revocation finishes", async 
     await route.fallback()
   })
   await page.getByRole("link", { name: "People" }).click()
-  await expect(page.getByText(member.email)).toBeVisible()
+  await expect(page.getByText(member.email, { exact: true })).toBeVisible()
   await page.getByRole("button", { name: "Log out", exact: true }).click()
   await expect(
     page.getByRole("heading", { name: "Welcome back" }),
