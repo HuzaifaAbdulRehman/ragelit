@@ -9,6 +9,7 @@ import {
   type ReactNode,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from "react"
 import { isAuthenticationError, useAuth } from "../auth/AuthProvider"
@@ -48,12 +49,18 @@ export function WorkspaceBoundary({ children }: { children: ReactNode }) {
 export function useWorkspace() {
   const auth = useAuth()
   const signal = useContext(ScopeSignal)
+  const [local] = useState(() => new AbortController())
+  const requestSignal = useMemo(
+    () => (signal ? AbortSignal.any([signal, local.signal]) : local.signal),
+    [signal, local],
+  )
+  useEffect(() => () => local.abort(), [local])
   if (!auth.accessToken || !auth.currentOrganization || !signal)
     throw new Error("No active workspace")
   return {
     token: auth.accessToken,
     organization: auth.currentOrganization,
     key: [auth.currentOrganization.id, auth.workspaceRevision] as const,
-    signal,
+    signal: requestSignal,
   }
 }

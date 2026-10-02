@@ -31,7 +31,7 @@ export function AppShell() {
         <OrganizationSwitcher />
         <nav aria-label="Workspace navigation">
           <Link to="/">Overview</Link>
-          <span aria-disabled="true">Documents</span>
+          <Link to="/documents">Documents</Link>
           {canManage && auth.currentOrganization ? (
             <Link
               to="/organizations/$organizationId/members"

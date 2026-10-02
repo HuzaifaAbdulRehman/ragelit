@@ -8,6 +8,8 @@ import { GroupsPage } from "./features/admin/GroupsPage"
 import { PeoplePage } from "./features/admin/PeoplePage"
 import { useAuth } from "./features/auth/AuthProvider"
 import { LoginPage } from "./features/auth/LoginPage"
+import { DocumentDetailPage } from "./features/documents/DocumentDetailPage"
+import { DocumentsPage } from "./features/documents/DocumentsPage"
 import { AppShell } from "./features/shell/AppShell"
 
 const rootRoute = createRootRoute({ component: () => <Outlet /> })
@@ -60,9 +62,25 @@ const groupsRoute = createRoute({
   path: "/organizations/$organizationId/groups",
   component: GroupsPage,
 })
+const documentsRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/documents",
+  component: DocumentsPage,
+})
+const documentRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/documents/$documentId",
+  component: DocumentDetailPage,
+})
 const routeTree = rootRoute.addChildren([
   loginRoute,
-  shellRoute.addChildren([dashboardRoute, membersRoute, groupsRoute]),
+  shellRoute.addChildren([
+    dashboardRoute,
+    membersRoute,
+    groupsRoute,
+    documentsRoute,
+    documentRoute,
+  ]),
 ])
 export const router = createRouter({ routeTree })
 declare module "@tanstack/react-router" {
