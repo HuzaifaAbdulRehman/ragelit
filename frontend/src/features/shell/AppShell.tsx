@@ -32,6 +32,7 @@ export function AppShell() {
         <nav aria-label="Workspace navigation">
           <Link to="/">Overview</Link>
           <Link to="/documents">Documents</Link>
+          <Link to="/chat">Chat</Link>
           {canManage && auth.currentOrganization ? (
             <Link
               to="/organizations/$organizationId/members"

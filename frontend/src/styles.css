@@ -14,7 +14,8 @@ body {
 }
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 button,
@@ -117,7 +118,8 @@ label {
   font-weight: 600;
 }
 input,
-select {
+select,
+textarea {
   width: 100%;
   border: 1px solid #cbd0cb;
   border-radius: 0.55rem;
@@ -126,7 +128,8 @@ select {
   color: #17241f;
 }
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   outline: 3px solid #d5b997;
   border-color: #7a4e2a;
 }
@@ -327,6 +330,9 @@ input[type="checkbox"] {
 }
 .muted {
   color: #66716c;
+}
+.answer-text {
+  white-space: pre-wrap;
 }
 .document-status {
   font-weight: 700;

@@ -8,6 +8,7 @@ import { GroupsPage } from "./features/admin/GroupsPage"
 import { PeoplePage } from "./features/admin/PeoplePage"
 import { useAuth } from "./features/auth/AuthProvider"
 import { LoginPage } from "./features/auth/LoginPage"
+import { ChatPage } from "./features/chat/ChatPage"
 import { DocumentDetailPage } from "./features/documents/DocumentDetailPage"
 import { DocumentsPage } from "./features/documents/DocumentsPage"
 import { AppShell } from "./features/shell/AppShell"
@@ -72,6 +73,11 @@ const documentRoute = createRoute({
   path: "/documents/$documentId",
   component: DocumentDetailPage,
 })
+const chatRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/chat",
+  component: ChatPage,
+})
 const routeTree = rootRoute.addChildren([
   loginRoute,
   shellRoute.addChildren([
@@ -80,6 +86,7 @@ const routeTree = rootRoute.addChildren([
     groupsRoute,
     documentsRoute,
     documentRoute,
+    chatRoute,
   ]),
 ])
 export const router = createRouter({ routeTree })
