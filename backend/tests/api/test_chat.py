@@ -3,11 +3,11 @@ from typing import cast
 from uuid import UUID, uuid4
 
 import pytest
-from app.chat.contracts import Generation
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine
 
+from app.chat.contracts import Generation
 from app.retrieval.contracts import AuthorizedChunk
 from app.retrieval.store import QdrantChunkStore
 from tests.api.document_support import TestEmbeddings
