@@ -53,7 +53,6 @@ const options = {
   env: environment,
   stdio: "inherit",
   windowsHide: true,
-  detached: process.platform !== "win32",
 }
 
 const api = spawn(
@@ -84,7 +83,7 @@ function stop(code) {
       })
     } else {
       try {
-        process.kill(-child.pid, "SIGKILL")
+        process.kill(child.pid, "SIGKILL")
       } catch (error) {
         if (error.code !== "ESRCH") throw error
       }
