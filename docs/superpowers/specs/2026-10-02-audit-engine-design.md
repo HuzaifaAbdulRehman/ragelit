@@ -1,7 +1,7 @@
 # M4 engine-first audit design
 
-Status: draft for review. The engine-first scope is approved; this written
-spec still needs review before the implementation plan.
+Status: approved. The user delegated design and execution choices on
+2026-10-02 and requested proceeding with the recommended engine-first slice.
 
 This spec narrows the [security design](2026-09-29-ragelit-security-design.md)
 and [roadmap](../plans/2026-09-29-ragelit-roadmap.md) to the first M4 slice.
