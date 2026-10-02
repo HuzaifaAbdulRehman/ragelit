@@ -52,6 +52,7 @@ class BoundaryEvidence(AuditModel):
     boundary: Boundary
     sequence: int = Field(ge=0)
     state: Literal["observed", "not_reached", "unobserved"] = "observed"
+    decision: Literal["normal", "query_skipped"] = "normal"
     chunk_ids: tuple[UUID, ...] = Field(default=(), max_length=20)
     canary_matches: tuple[CanaryMatch, ...] = Field(default=(), max_length=20)
     duration_ms: float = Field(default=0.0, ge=0)

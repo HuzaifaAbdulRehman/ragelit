@@ -26,7 +26,11 @@ def _not_reached_is_proven(
     }:
         return observation.http_status in {401, 403, 422}
     if observation.terminal == Terminal.ABSTAINED:
-        return observation.http_status == 200 and stage.boundary in _GENERATION
+        return observation.http_status == 200 and (
+            stage.boundary in _GENERATION
+            or stage.boundary == Boundary.RETRIEVAL_RAW
+            and stage.decision == "query_skipped"
+        )
     if observation.terminal == Terminal.CITATIONS_REJECTED:
         return observation.http_status == 502 and stage.boundary in _DELIVERY
     if observation.terminal == Terminal.RETRIEVAL_REJECTED:
