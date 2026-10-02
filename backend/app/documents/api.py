@@ -6,6 +6,7 @@ from sqlalchemy import select
 from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import CurrentPrincipal, DatabaseSession, require_action
+from app.documents.access import read_document_access
 from app.documents.extraction import DocumentError
 from app.documents.lifecycle import (
     change_access,
@@ -14,7 +15,12 @@ from app.documents.lifecycle import (
     retry_document,
 )
 from app.documents.models import DocumentVersion
-from app.documents.schemas import AccessCommand, DocumentResponse, VersionResponse
+from app.documents.schemas import (
+    AccessCommand,
+    AccessResponse,
+    DocumentResponse,
+    VersionResponse,
+)
 from app.documents.service import create_document, list_documents, upload_media_type
 from app.documents.storage import stream_upload
 from app.retrieval.deps import ChunkStore
@@ -96,6 +102,13 @@ def document_detail(
     if not documents:
         raise DocumentError("resource_not_found", 404)
     return DocumentResponse.model_validate(documents[0])
+
+
+@router.get("/{document_id}/access", response_model=AccessResponse)
+def document_access(
+    document_id: UUID, principal: DocumentManager, session: DatabaseSession
+) -> AccessResponse:
+    return read_document_access(principal, document_id, session=session)
 
 
 @router.patch("/{document_id}", response_model=DocumentResponse)

@@ -6,6 +6,48 @@ from fastapi.testclient import TestClient
 from tests.api.tenant_support import TenantApiSeed
 
 
+def test_group_members_are_paginated_and_tenant_scoped(
+    tenant_seed: TenantApiSeed,
+    tenant_client: TestClient,
+    login_headers: Callable[[str, str], dict[str, str]],
+) -> None:
+    headers = login_headers(tenant_seed.owner_email, tenant_seed.organization_a_slug)
+    base = f"/api/v1/organizations/{tenant_seed.organization_a_id}/groups"
+    created = tenant_client.post(base, headers=headers, json={"name": "Paged"})
+    assert created.status_code == 201
+    members = f"{base}/{created.json()['id']}/members"
+    for membership_id in (
+        tenant_seed.owner_membership_a_id,
+        tenant_seed.member_membership_id,
+    ):
+        assert (
+            tenant_client.post(
+                f"{members}/{membership_id}", headers=headers
+            ).status_code
+            == 204
+        )
+    first = tenant_client.get(f"{members}?limit=1&offset=0", headers=headers)
+    second = tenant_client.get(f"{members}?limit=1&offset=1", headers=headers)
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["limit"] == 1
+    assert second.json()["offset"] == 1
+    assert {first.json()["items"][0]["email"], second.json()["items"][0]["email"]} == {
+        tenant_seed.owner_email,
+        tenant_seed.member_email,
+    }
+    assert first.json()["items"][0]["id"] != second.json()["items"][0]["id"]
+    foreign = tenant_client.get(
+        f"{base}/{tenant_seed.group_b_id}/members", headers=headers
+    )
+    assert foreign.status_code == 404
+    for email in (tenant_seed.member_email, tenant_seed.auditor_email):
+        denied = tenant_client.get(
+            members, headers=login_headers(email, tenant_seed.organization_a_slug)
+        )
+        assert denied.status_code == 403
+
+
 def test_owner_can_manage_group_lifecycle_and_membership(
     tenant_seed: TenantApiSeed,
     tenant_client: TestClient,

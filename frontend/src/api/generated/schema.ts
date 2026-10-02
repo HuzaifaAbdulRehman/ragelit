@@ -126,6 +126,23 @@ export interface paths {
         patch: operations["update_access_api_v1_documents__document_id__patch"];
         trace?: never;
     };
+    "/api/v1/documents/{document_id}/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Document Access */
+        get: operations["document_access_api_v1_documents__document_id__access_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/documents/{document_id}/retry": {
         parameters: {
             query?: never;
@@ -212,6 +229,23 @@ export interface paths {
         head?: never;
         /** Rename Group Route */
         patch: operations["rename_group_route_api_v1_organizations__organization_id__groups__group_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_id}/groups/{group_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Group Members Route */
+        get: operations["group_members_route_api_v1_organizations__organization_id__groups__group_id__members_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/organizations/{organization_id}/groups/{group_id}/members/{membership_id}": {
@@ -349,6 +383,15 @@ export interface components {
              * @enum {string}
              */
             visibility: "organization" | "restricted";
+        };
+        /** AccessResponse */
+        AccessResponse: {
+            /** Group Ids */
+            group_ids: string[];
+            /** User Ids */
+            user_ids: string[];
+            /** Visibility */
+            visibility: string;
         };
         /** AccessTokenResponse */
         AccessTokenResponse: {
@@ -1004,6 +1047,37 @@ export interface operations {
             };
         };
     };
+    document_access_api_v1_documents__document_id__access_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     retry_api_v1_documents__document_id__retry_post: {
         parameters: {
             query?: never;
@@ -1398,6 +1472,71 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    group_members_route_api_v1_organizations__organization_id__groups__group_id__members_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                organization_id: string;
+                group_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberList"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
