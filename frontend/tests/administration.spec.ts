@@ -165,9 +165,7 @@ test("groups create rename delete and update membership IDs", async ({
     page.getByRole("checkbox", { name: member.email, exact: true }),
   ).toBeChecked()
   page.on("dialog", (dialog) => dialog.accept())
-  await page
-    .getByRole("checkbox", { name: member.email, exact: true })
-    .click()
+  await page.getByRole("checkbox", { name: member.email, exact: true }).click()
   await expect(
     page.getByRole("checkbox", { name: member.email, exact: true }),
   ).toHaveCount(0)

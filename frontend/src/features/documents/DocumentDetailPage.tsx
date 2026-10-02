@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "@tanstack/react-router"
 import { type DocumentResponse, documentsApi } from "../../api/documents"
 import { RequestError } from "../shell/RequestError"
 import { useWorkspace } from "../shell/WorkspaceBoundary"
+import { DocumentAccessEditor } from "./DocumentAccessEditor"
 import { DocumentStatus, isIndexing } from "./DocumentStatus"
 import { UploadDocumentForm } from "./UploadDocumentForm"
 
@@ -110,6 +111,18 @@ export function DocumentDetailPage() {
         </div>
       )}
       <RequestError error={action.error} />
+      {canManage && (
+        <DocumentAccessEditor
+          key={documentId}
+          documentId={documentId}
+          onSaved={(updated) => {
+            client.setQueryData(key, updated)
+            void client.invalidateQueries({
+              queryKey: [...scope.key, "documents"],
+            })
+          }}
+        />
+      )}
       <section className="panel">
         <h2>Version history</h2>
         {versions.isPending && <p>Loading versions…</p>}
