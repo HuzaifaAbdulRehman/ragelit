@@ -95,6 +95,19 @@ def test_required_inventory_has_every_control_and_independent_positive_labels() 
     assert sum(case.action == "replace" for case in template.cases) == 6
 
 
+def test_citation_challenge_names_a_document_outside_the_actors_grants() -> None:
+    template = generate_fixtures()
+    documents = {document.id: document for document in template.documents}
+    actors = {actor.id: actor for actor in template.actors}
+    for case in template.cases:
+        if case.action != "challenge_citation":
+            continue
+        document, actor = documents[case.document_id], actors[case.actor_id]
+        assert document.visibility == "restricted"
+        assert actor.id not in document.user_ids
+        assert actor.group_id not in document.group_ids
+
+
 def test_fixture_vectors_rank_each_probe_above_permitted_anchor() -> None:
     template = generate_fixtures()
     provider = FixtureEmbeddings()

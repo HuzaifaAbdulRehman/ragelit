@@ -298,7 +298,7 @@ def generate_fixtures(seed: int = 20261002) -> FixtureTemplate:
             "citation",
             Control.CITATION,
             member,
-            f"{org}-user",
+            f"{org}-ungranted",
             action="challenge_citation",
             expected_status=502,
         )
