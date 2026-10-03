@@ -12,6 +12,7 @@ from app.audits.contracts import (
     Boundary,
     BoundaryEvidence,
     CanaryMatch,
+    DenialCode,
     Terminal,
 )
 from app.retrieval.contracts import AuthorizedChunk
@@ -47,6 +48,7 @@ class AuditObserver:
         self._failed = False
         self._scope_hash: str | None = None
         self._terminal = Terminal.RUNTIME_FAILED
+        self._denial_code: DenialCode | None = None
         self._http_status = 503
         self._finished = False
 
@@ -187,12 +189,18 @@ class AuditObserver:
         self._record(Boundary.CITATIONS_DELIVERED, identifiers=citation_ids)
 
     def finish(self, http_status: int, state: str, code: str | None = None) -> None:
+        denial_code: DenialCode | None = None
         if http_status == 200 and state == "answered":
             terminal = Terminal.ANSWERED
         elif http_status == 200 and state == "abstained":
             terminal = Terminal.ABSTAINED
         elif http_status in {401, 403}:
             terminal = Terminal.AUTHENTICATION_DENIED
+            denial_code = (
+                "membership_inactive"
+                if code == "membership_inactive"
+                else "authentication_failed"
+            )
         elif http_status == 422:
             terminal = Terminal.VALIDATION_DENIED
         elif http_status == 503 and code == "invalid_retrieval_projection":
@@ -202,10 +210,13 @@ class AuditObserver:
         else:
             terminal = Terminal.RUNTIME_FAILED
         if self._finished and (
-            self._http_status != http_status or self._terminal != terminal
+            self._http_status != http_status
+            or self._terminal != terminal
+            or self._denial_code != denial_code
         ):
             self._failed = True
         self._http_status, self._terminal = http_status, terminal
+        self._denial_code = denial_code
         self._finished = True
 
     def snapshot(self) -> AuditObservation:
@@ -235,6 +246,7 @@ class AuditObserver:
             case_id=self.case_id,
             http_status=self._http_status,
             terminal=terminal,
+            denial_code=self._denial_code,
             scope_hash=self._scope_hash,
             boundaries=tuple(stages),
         )

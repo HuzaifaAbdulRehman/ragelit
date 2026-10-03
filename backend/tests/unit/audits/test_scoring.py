@@ -34,6 +34,38 @@ def test_deny_all_fails_positive_control() -> None:
     assert build_report((case(),), (result,), metadata()).exit_code == 1
 
 
+def test_deny_all_fails_a_citation_challenge_without_runtime_failure() -> None:
+    challenge = case(positive=False).model_copy(
+        update={"expected_status": 502, "citation_challenge": FORBIDDEN}
+    )
+    evidence = observation().model_copy(
+        update={
+            "terminal": "abstained",
+            "boundaries": tuple(
+                stage.model_copy(
+                    update={
+                        "chunk_ids": (),
+                        "state": "observed"
+                        if stage.boundary
+                        in {
+                            Boundary.RETRIEVAL_RAW,
+                            Boundary.RETRIEVAL_ACCEPTED,
+                            Boundary.CONTEXT,
+                        }
+                        else "not_reached",
+                    }
+                )
+                for stage in observation().boundaries
+            ),
+        }
+    )
+    result = score_case(challenge, evidence)
+    assert result.status == "fail"
+    assert result.reason == "positive_evidence_missing"
+    assert result.coverage_complete
+    assert build_report((challenge,), (result,), metadata()).exit_code == 1
+
+
 def test_forbidden_retrieval_fails_after_containment() -> None:
     evidence = observation()
     stages = list(evidence.boundaries)
@@ -109,11 +141,14 @@ def test_unobserved_is_not_empty_evidence() -> None:
 
 
 def test_early_authentication_denial_has_proven_not_reached_stages() -> None:
-    denial = case(positive=False).model_copy(update={"expected_status": 401})
+    denial = case(positive=False).model_copy(
+        update={"expected_status": 401, "expected_denial_code": "membership_inactive"}
+    )
     evidence = observation().model_copy(
         update={
             "http_status": 401,
             "terminal": "authentication_denied",
+            "denial_code": "membership_inactive",
             "scope_hash": None,
             "boundaries": tuple(
                 stage.model_copy(update={"state": "not_reached", "chunk_ids": ()})
@@ -124,6 +159,31 @@ def test_early_authentication_denial_has_proven_not_reached_stages() -> None:
     result = score_case(denial, evidence)
     assert result.status == "pass"
     assert result.coverage_complete
+
+
+@pytest.mark.parametrize("denial_code", [None, "authentication_failed"])
+def test_wrong_authentication_denial_cannot_prove_membership_revocation(
+    denial_code: str | None,
+) -> None:
+    denial = case(positive=False).model_copy(
+        update={"expected_status": 401, "expected_denial_code": "membership_inactive"}
+    )
+    evidence = observation().model_copy(
+        update={
+            "http_status": 401,
+            "terminal": "authentication_denied",
+            "scope_hash": None,
+            "denial_code": denial_code,
+            "boundaries": tuple(
+                stage.model_copy(update={"state": "not_reached", "chunk_ids": ()})
+                for stage in observation().boundaries
+            ),
+        }
+    )
+    result = score_case(denial, evidence)
+    assert result.status == "inconclusive"
+    assert not result.coverage_complete
+    assert build_report((denial,), (result,), metadata()).exit_code == 2
 
 
 def test_not_reached_without_terminal_proof_is_inconclusive() -> None:

@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 Identifier = Annotated[str, Field(pattern=r"^[A-Za-z0-9_.:-]{1,80}$")]
 Checksum = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+DenialCode = Literal["membership_inactive", "authentication_failed"]
 
 
 class AuditModel(BaseModel):
@@ -70,6 +71,7 @@ class BoundaryEvidence(AuditModel):
 class AuditCase(AuditModel):
     id: Identifier
     expected_status: int = Field(ge=100, le=599)
+    expected_denial_code: DenialCode | None = None
     positive: bool = False
     required_chunks: tuple[UUID, ...] = Field(default=(), max_length=20)
     forbidden_chunks: tuple[UUID, ...] = Field(default=(), max_length=500)
@@ -94,6 +96,7 @@ class AuditObservation(AuditModel):
     case_id: Identifier
     http_status: int = Field(ge=100, le=599)
     terminal: Terminal
+    denial_code: DenialCode | None = None
     scope_hash: Checksum | None = None
     boundaries: tuple[BoundaryEvidence, ...] = Field(
         default=(), max_length=len(Boundary)

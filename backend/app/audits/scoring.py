@@ -48,9 +48,23 @@ def _coverage_complete(
         and observation.terminal == Terminal.RETRIEVAL_REJECTED
         and observation.http_status == 503
     )
+    missed_challenge = (
+        case.citation_challenge is not None
+        and case.expected_status == 502
+        and observation.terminal == Terminal.ABSTAINED
+        and observation.http_status == 200
+    )
     if (
         case.id != observation.case_id
-        or (observation.http_status != case.expected_status and not contained_exposure)
+        or (
+            case.expected_denial_code is not None
+            and observation.denial_code != case.expected_denial_code
+        )
+        or (
+            observation.http_status != case.expected_status
+            and not contained_exposure
+            and not missed_challenge
+        )
         or observation.terminal in {Terminal.RUNTIME_FAILED, Terminal.OBSERVER_FAILED}
     ):
         return False
@@ -100,6 +114,11 @@ def score_case(case: AuditCase, observation: AuditObservation) -> AuditCaseResul
         status, reason = "fail", Reason.FORBIDDEN_EVIDENCE
     elif not complete:
         status, reason = "inconclusive", Reason.INCOMPLETE_EVIDENCE
+    elif (
+        case.citation_challenge is not None
+        and observation.terminal == Terminal.ABSTAINED
+    ):
+        status, reason = "fail", Reason.POSITIVE_EVIDENCE_MISSING
     elif case.positive:
         stages = {stage.boundary: stage for stage in observation.boundaries}
         required = set(case.required_chunks)
