@@ -4,6 +4,58 @@
  */
 
 export interface paths {
+    "/api/v1/audits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Audits Route */
+        get: operations["list_audits_route_api_v1_audits_get"];
+        put?: never;
+        /** Start Audit Route */
+        post: operations["start_audit_route_api_v1_audits_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audits/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Audit Detail Route */
+        get: operations["audit_detail_route_api_v1_audits__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audits/{run_id}/report.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Audit Download Route */
+        get: operations["audit_download_route_api_v1_audits__run_id__report_json_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -425,6 +477,233 @@ export interface components {
              */
             status: "answered" | "abstained" | "failed";
         };
+        /** AuditCaseResult */
+        AuditCaseResult: {
+            /** Case Id */
+            case_id: string;
+            /** Coverage Complete */
+            coverage_complete: boolean;
+            first_exposure?: components["schemas"]["Boundary"] | null;
+            observation: components["schemas"]["AuditObservation"];
+            reason: components["schemas"]["Reason"];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pass" | "fail" | "inconclusive";
+        };
+        /** AuditObservation */
+        AuditObservation: {
+            /**
+             * Boundaries
+             * @default []
+             */
+            boundaries: components["schemas"]["BoundaryEvidence"][];
+            /** Case Id */
+            case_id: string;
+            /** Denial Code */
+            denial_code?: ("membership_inactive" | "authentication_failed") | null;
+            /** Http Status */
+            http_status: number;
+            /** Scope Hash */
+            scope_hash?: string | null;
+            terminal: components["schemas"]["Terminal"];
+        };
+        /** AuditReport */
+        AuditReport: {
+            /** Coverage Complete */
+            coverage_complete: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /**
+             * Exit Code
+             * @enum {integer}
+             */
+            exit_code: 0 | 1 | 2;
+            inventory_reason?: components["schemas"]["Reason"] | null;
+            metadata: components["schemas"]["RunMetadata"];
+            /** Required Case Ids */
+            required_case_ids: string[];
+            /** Results */
+            results: components["schemas"]["AuditCaseResult"][];
+            /**
+             * Retrieval Notice
+             * @default Retrieval evidence covers returned fused results, not internal dense or sparse prefetch candidates.
+             * @constant
+             */
+            retrieval_notice: "Retrieval evidence covers returned fused results, not internal dense or sparse prefetch candidates.";
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id?: string;
+            /**
+             * Runtime Failed
+             * @default false
+             */
+            runtime_failed: boolean;
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: "1";
+            /**
+             * Scope Notice
+             * @default Synthetic fixtures and deterministic providers only; not a security certification or model-quality benchmark.
+             * @constant
+             */
+            scope_notice: "Synthetic fixtures and deterministic providers only; not a security certification or model-quality benchmark.";
+        };
+        /** AuditRunCreate */
+        AuditRunCreate: Record<string, never>;
+        /** AuditRunDetail */
+        AuditRunDetail: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Error Code */
+            error_code: string | null;
+            /** Exit Code */
+            exit_code: (0 | 1 | 2) | null;
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "unknown" | "pass" | "fail" | "inconclusive";
+            report: components["schemas"]["AuditReport"] | null;
+            /** Report Available */
+            report_available: boolean;
+            /** Report Id */
+            report_id: string | null;
+            /** Report Sha256 */
+            report_sha256: string | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "queued" | "running" | "finished" | "recovery_required";
+        };
+        /** AuditRunList */
+        AuditRunList: {
+            /** Items */
+            items: components["schemas"]["AuditRunSummary"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
+        /** AuditRunSummary */
+        AuditRunSummary: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Error Code */
+            error_code: string | null;
+            /** Exit Code */
+            exit_code: (0 | 1 | 2) | null;
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "unknown" | "pass" | "fail" | "inconclusive";
+            /** Report Available */
+            report_available: boolean;
+            /** Report Id */
+            report_id: string | null;
+            /** Report Sha256 */
+            report_sha256: string | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "queued" | "running" | "finished" | "recovery_required";
+        };
+        /**
+         * Boundary
+         * @enum {string}
+         */
+        Boundary: "retrieval_raw" | "retrieval_accepted" | "context" | "output_candidate" | "output_delivered" | "citations_candidate" | "citations_delivered";
+        /** BoundaryEvidence */
+        BoundaryEvidence: {
+            boundary: components["schemas"]["Boundary"];
+            /**
+             * Canary Matches
+             * @default []
+             */
+            canary_matches: components["schemas"]["CanaryMatch"][];
+            /**
+             * Chunk Ids
+             * @default []
+             */
+            chunk_ids: string[];
+            /**
+             * Decision
+             * @default normal
+             * @enum {string}
+             */
+            decision: "normal" | "query_skipped";
+            /**
+             * Duration Ms
+             * @default 0
+             */
+            duration_ms: number;
+            /** Sequence */
+            sequence: number;
+            /**
+             * State
+             * @default observed
+             * @enum {string}
+             */
+            state: "observed" | "not_reached" | "unobserved";
+            /**
+             * Truncated
+             * @default false
+             */
+            truncated: boolean;
+        };
+        /** CanaryMatch */
+        CanaryMatch: {
+            /** Canary Id */
+            canary_id: string;
+            /**
+             * Count
+             * @default 1
+             */
+            count: number;
+            /**
+             * Offsets
+             * @default []
+             */
+            offsets: number[];
+        };
         /** Citation */
         Citation: {
             /**
@@ -577,6 +856,11 @@ export interface components {
             question: string;
         };
         /**
+         * Reason
+         * @enum {string}
+         */
+        Reason: "control_passed" | "forbidden_evidence" | "positive_evidence_missing" | "incomplete_evidence" | "invalid_observation" | "inventory_incomplete";
+        /**
          * Role
          * @enum {string}
          */
@@ -584,6 +868,34 @@ export interface components {
         /** RoleChange */
         RoleChange: {
             role: components["schemas"]["Role"];
+        };
+        /** RunMetadata */
+        RunMetadata: {
+            /** Binding Hash */
+            binding_hash: string;
+            /** Config Hash */
+            config_hash: string;
+            /** Embedding Id */
+            embedding_id: string;
+            /** Generator Id */
+            generator_id: string;
+            /** Git Dirty */
+            git_dirty: boolean;
+            /** Git Revision */
+            git_revision: string;
+            /** Lock Hashes */
+            lock_hashes: string[];
+            /** Pack Id */
+            pack_id: string;
+            /**
+             * Profile
+             * @enum {string}
+             */
+            profile: "safe" | "vulnerable" | "deny_all";
+            /** Provider Id */
+            provider_id: string;
+            /** Template Hash */
+            template_hash: string;
         };
         /** StageResponse */
         StageResponse: {
@@ -604,6 +916,11 @@ export interface components {
              */
             target_organization_id: string;
         };
+        /**
+         * Terminal
+         * @enum {string}
+         */
+        Terminal: "answered" | "abstained" | "authentication_denied" | "validation_denied" | "retrieval_rejected" | "citations_rejected" | "runtime_failed" | "observer_failed";
         /** TraceResponse */
         TraceResponse: {
             /**
@@ -649,6 +966,311 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_audits_route_api_v1_audits_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditRunList"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    start_audit_route_api_v1_audits_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuditRunCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditRunSummary"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    audit_detail_route_api_v1_audits__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditRunDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    audit_download_route_api_v1_audits__run_id__report_json_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     login_route_api_v1_auth_login_post: {
         parameters: {
             query?: never;
