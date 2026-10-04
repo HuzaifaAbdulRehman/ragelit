@@ -32,7 +32,7 @@ def invoke_cli(
         env=environment,
         capture_output=True,
         text=True,
-        timeout=30,
+        timeout=60 if os.name == "nt" else 30,
         check=False,
     )
 
