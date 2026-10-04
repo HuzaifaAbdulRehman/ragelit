@@ -19,7 +19,7 @@
 - Bound execution to 1800 seconds. Poll visible queued/running jobs every two seconds; never invent percentage progress.
 - No injection pack, HTML export, benchmarks, streaming, paid provider, automatic purge, or visibility change in this slice.
 - Use focused RED/GREEN checks, meaningful local commits, one final branch review, and one relevant final gate. Reuse unchanged engine evidence.
-- This plan needs user review and an execution-method choice before implementation.
+- Native execution was approved on 4 October 2026. Implementation is committed locally through 0cbd52f. Final verification is incomplete: Windows ran out of memory, and the real audit journey returned an inconclusive partial report. Resume from the retained progress ledger after freeing memory; do not repeat the passing suites.
 
 ## Review Focus
 
