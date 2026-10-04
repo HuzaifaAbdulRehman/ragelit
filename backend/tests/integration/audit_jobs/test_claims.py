@@ -19,6 +19,85 @@ from tests.api.tenant_support import TenantApiSeed
 from tests.unit.audit_jobs.test_execution import configuration
 
 
+def test_recovery_row_blocks_admission(
+    tenant_database_engines: tuple[Engine, Engine],
+    tenant_seed: TenantApiSeed,
+) -> None:
+    from app.audit_jobs.service import AuditJobError, enqueue_audit
+    from app.tenancy.scope import RequestPrincipal
+
+    run_id = queued(tenant_database_engines, tenant_seed)
+    with Session(tenant_database_engines[0]) as session:
+        run = session.get(AuditRun, run_id)
+        membership = session.get(Membership, tenant_seed.owner_membership_a_id)
+        assert run is not None and membership is not None
+        run.state, run.outcome, run.exit_code = "recovery_required", "inconclusive", 2
+        run.finished_at = datetime.now(UTC)
+        principal = RequestPrincipal(
+            membership.user_id,
+            membership.organization_id,
+            uuid4(),
+            membership.id,
+            membership.role,
+        )
+        session.commit()
+    with Session(tenant_database_engines[1], expire_on_commit=False) as session:
+        set_request_context(
+            session,
+            user_id=principal.user_id,
+            organization_id=principal.organization_id,
+        )
+        with pytest.raises(AuditJobError) as error:
+            enqueue_audit(principal, session=session)
+        assert error.value.status == 409
+
+
+def test_renewal_and_partial_result_are_persisted_atomically(
+    tenant_database_engines: tuple[Engine, Engine],
+    tenant_seed: TenantApiSeed,
+    tmp_path: Path,
+) -> None:
+    import hashlib
+
+    from app.audit_jobs.claims import claim_audit, finish_audit_claim, renew_audit_claim
+    from tests.unit.audits.test_artifacts import partial_artifact
+
+    run_id = queued(tenant_database_engines, tenant_seed)
+    now = datetime.now(UTC)
+    path = partial_artifact(tmp_path)
+    content = path.read_bytes()
+    outcome = CliOutcome(
+        2,
+        content.decode(),
+        UUID(path.stem),
+        hashlib.sha256(content).hexdigest(),
+        "audit_incomplete",
+    )
+    with Session(tenant_database_engines[1]) as session:
+        claim = claim_audit(tenant_seed.organization_a_id, session=session, now=now)
+        assert claim is not None
+        assert renew_audit_claim(
+            claim, session=session, now=now + timedelta(seconds=30)
+        )
+        assert finish_audit_claim(
+            claim, outcome, session=session, now=now + timedelta(seconds=70)
+        )
+        assert not finish_audit_claim(
+            claim, CliOutcome(0), session=session, now=now + timedelta(seconds=71)
+        )
+    with Session(tenant_database_engines[0]) as session:
+        run = session.get(AuditRun, run_id)
+        assert (
+            run is not None
+            and run.state == "finished"
+            and run.outcome == "inconclusive"
+        )
+        assert (
+            run.report_id == outcome.report_id
+            and run.report_content == outcome.report_content
+        )
+
+
 def queued(engines: tuple[Engine, Engine], seed: TenantApiSeed) -> UUID:
     with Session(engines[0], expire_on_commit=False) as session:
         membership = session.get(Membership, seed.owner_membership_a_id)

@@ -1,4 +1,5 @@
 import { Link, Navigate, Outlet, useNavigate } from "@tanstack/react-router"
+import { auditAllowed } from "../../api/audits"
 
 import { useAuth } from "../auth/AuthProvider"
 import { OrganizationSwitcher } from "./OrganizationSwitcher"
@@ -49,7 +50,9 @@ export function AppShell() {
               Groups
             </Link>
           )}
-          <span aria-disabled="true">Audit</span>
+          {auditAllowed(auth.currentOrganization?.role ?? "") && (
+            <Link to="/audits">Audits</Link>
+          )}
         </nav>
         <button className="secondary" type="button" onClick={logout}>
           Log out

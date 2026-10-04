@@ -5,8 +5,11 @@ admins can manage groups, upload documents, and edit reading access in one web
 portal. Members can ask questions over permitted evidence and inspect cited
 answers or their own query traces.
 
-Automated privacy audits, retrieval benchmarks, and live streaming are still
-planned. This is a development build, not a production deployment.
+Owners, admins, and auditors can queue a synthetic access-control audit and
+inspect its saved results in Audits. The separate operator worker runs invented
+fixtures only. Retrieval benchmarks, indirect-injection tests, HTML exports, and
+live streaming remain planned. This is a development build, not a production
+deployment.
 
 ## Run locally
 
@@ -181,7 +184,50 @@ scans offline without sending the dependency inventory to an external API.
 Missing inputs, invalid advisory records, scanner errors, and known
 vulnerabilities fail the check. The audit does not establish exploitability.
 
-## Synthetic access-control audit
+## Audit jobs in the portal
+
+Open Audits and choose Start synthetic audit. The browser can queue jobs, but
+the operator must run the separate worker for that organization. Member accounts
+have no audit access. Queued and running outcomes stay unknown; finished exits
+0, 1, and 2 mean pass, fail, and inconclusive. A pass applies only to the synthetic
+safe pack, not company documents.
+
+Use the application's non-owner database URL for job storage. Give audit
+bootstrap settings only to this worker terminal, not the web server. From
+`backend`:
+
+```powershell
+$env:RAGELIT_DATABASE_URL = 'postgresql+psycopg://ragelit_app:ragelit_app@127.0.0.1:5432/ragelit'
+$env:RAGELIT_AUDIT_ENVIRONMENT = 'local'
+$env:RAGELIT_AUDIT_DATABASE_ADMIN_URL = 'postgresql+psycopg://ragelit_owner:ragelit_owner@127.0.0.1:5432/postgres'
+$env:RAGELIT_AUDIT_QDRANT_URL = 'http://127.0.0.1:6333'
+$env:RAGELIT_AUDIT_ROOT = Join-Path (Split-Path -Parent $PWD.Path) 'data/audit-workspaces'
+$env:RAGELIT_AUDIT_APPLICATION_PASSWORD = [guid]::NewGuid().ToString('N')
+$env:RAGELIT_AUDIT_FIXTURE_PASSWORD = [guid]::NewGuid().ToString('N')
+uv run --frozen python -m app.workers.audit --organization-id <organization-uuid> --once
+```
+
+Obtain the organization's UUID from `GET /api/v1/organizations` in the API docs.
+Replace the angle-bracket placeholder before running the command. Omit `--once`
+to keep the worker waiting for that organization's jobs. The worker derives a
+fresh database, collection, and directory from each request UUID beneath the
+configured root. It runs the full safe profile with no paid provider.
+Execution is capped at 1800 seconds. Saved JSON downloads preserve the validated
+artifact bytes and SHA-256; case evidence distinguishes candidates from delivered
+output and observed stages from stages that were never reached.
+
+After sleep or an interrupted lease, new runs stay blocked for that organization.
+First stop and confirm both the worker and its child have stopped. Then recover
+the exact request ID with the same job database URL and organization UUID:
+
+```console
+uv run --frozen python -m app.workers.audit --organization-id <organization-uuid> --recover-run <request-uuid> --confirm-worker-stopped
+```
+
+Recovery retains fixtures and any report, finishes inconclusively, and returns
+exit 2. It does not delete, rerun, or convert the audit to pass.
+
+## Synthetic access-control CLI
 
 The audit CLI tests the real API, ingestion worker, PostgreSQL RLS, and Qdrant
 against generated documents. It uses deterministic embeddings and answers;
@@ -233,8 +279,7 @@ directory under `data/audit-reports`, then validate coverage, redaction, and the
 literal 0/1/1 gates before CI uploads them. Existing export destinations are
 refused. Set `RAGELIT_AUDIT_EXPORT_DIRECTORY` to choose another fresh destination.
 Keep the laptop awake during service-backed checks; sleep counts against subprocess
-timeouts. The CLI and report files are available separately from the portal;
-an audit dashboard is not implemented yet.
+timeouts. The CLI also remains available separately from the portal.
 
-Billing, invitations, the audit dashboard, streaming, and benchmark comparisons
-remain separate milestones.
+Billing, invitations, indirect-injection checks, HTML exports, streaming, and
+benchmark comparisons remain separate milestones.
