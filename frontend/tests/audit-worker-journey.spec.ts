@@ -9,6 +9,20 @@ import { expect, type Response, test } from "@playwright/test"
 import type { components } from "../src/api/generated/schema"
 import { signIn } from "./helpers/session"
 
+test("audit test login outlasts the worker budget", async ({ page }) => {
+  const loggedIn = page.waitForResponse((response) =>
+    response.url().endsWith("/api/v1/auth/login"),
+  )
+  await signIn(page)
+  const { access_token } = (await (await loggedIn).json()) as {
+    access_token: string
+  }
+  const claims = JSON.parse(
+    Buffer.from(access_token.split(".")[1], "base64url").toString("utf8"),
+  ) as { exp: number; iat: number }
+  expect(claims.exp - claims.iat).toBeGreaterThan(1900)
+})
+
 async function stopOwnedWorker(worker: ChildProcess) {
   if (worker.exitCode !== null || !worker.pid) return
   const closed = once(worker, "close")

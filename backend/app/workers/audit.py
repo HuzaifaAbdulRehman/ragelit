@@ -1,8 +1,10 @@
 import argparse
 import json
 import os
+import signal
 import time
 from collections.abc import Callable
+from types import FrameType
 from typing import NoReturn
 from uuid import UUID
 
@@ -91,6 +93,12 @@ class _Parser(argparse.ArgumentParser):
         raise ValueError("audit_invalid_arguments")
 
 
+def _interrupt(signum: int, frame: FrameType | None) -> NoReturn:
+    # Further termination requests must not interrupt child reaping.
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    raise KeyboardInterrupt
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _Parser(description="Run safe synthetic audits for one organization.")
     parser.add_argument("--organization-id", type=UUID, required=True)
@@ -98,6 +106,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--recover-run", type=UUID)
     parser.add_argument("--confirm-worker-stopped", action="store_true")
     engine: Engine | None = None
+    previous_termination_handler = signal.signal(signal.SIGTERM, _interrupt)
     try:
         args = parser.parse_args(argv)
         if bool(args.recover_run) != args.confirm_worker_stopped or (
@@ -141,8 +150,11 @@ def main(argv: list[str] | None = None) -> int:
     except Exception:
         code = "audit_worker_failed"
     finally:
-        if engine is not None:
-            engine.dispose()
+        try:
+            if engine is not None:
+                engine.dispose()
+        finally:
+            signal.signal(signal.SIGTERM, previous_termination_handler)
     print(json.dumps({"code": code, "exit_code": 2}))
     return 2
 

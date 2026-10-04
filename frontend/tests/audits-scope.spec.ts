@@ -1,13 +1,37 @@
 import { expect, test } from "@playwright/test"
 import { evidence, openAudit, summary } from "./helpers/audits"
-import { mockSession, problem, runId } from "./helpers/session"
+import { mockSession, orgA, orgB, problem, runId } from "./helpers/session"
 
 test("late old-workspace evidence is discarded after switch", async ({
   page,
 }) => {
   await mockSession(page)
+  await page.route("**/api/v1/organizations", (route) =>
+    route.fulfill({
+      json: {
+        items: [
+          {
+            id: orgA,
+            name: "Northstar Labs",
+            slug: "northstar-labs",
+            role: "owner",
+          },
+          {
+            id: orgB,
+            name: "Harbor Works",
+            slug: "harbor-works",
+            role: "admin",
+          },
+        ],
+      },
+    }),
+  )
   let release!: () => void
   let started!: () => void
+  let settled!: (outcome: string) => void
+  const completed = new Promise<string>((resolve) => {
+    settled = resolve
+  })
   const waiting = new Promise<void>((resolve) => {
     started = resolve
   })
@@ -15,11 +39,23 @@ test("late old-workspace evidence is discarded after switch", async ({
     release = resolve
   })
   await page.route(`**/api/v1/audits/${runId}`, async (route) => {
+    const token = route.request().headers().authorization.split(" ")[1]
+    const { org } = JSON.parse(
+      Buffer.from(token.split(".")[1], "base64url").toString("utf8"),
+    ) as { org: string }
+    if (org === orgB) {
+      await route.fulfill({
+        status: 404,
+        json: problem("audit_not_found", 404, "Audit not found."),
+      })
+      return
+    }
     started()
     await gate
-    await route
-      .fulfill({ json: { ...summary, report: evidence } })
-      .catch(() => {})
+    await route.fulfill({ json: { ...summary, report: evidence } }).then(
+      () => settled("fulfilled"),
+      () => settled("cancelled"),
+    )
   })
   await openAudit(page)
   await waiting
@@ -30,6 +66,13 @@ test("late old-workspace evidence is discarded after switch", async ({
     page.getByRole("heading", { name: "Harbor Works" }),
   ).toBeVisible()
   release()
+  expect(await completed).toMatch(/^(fulfilled|cancelled)$/)
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  )
   await expect(page.getByText("synthetic-case", { exact: false })).toHaveCount(
     0,
   )
