@@ -2,6 +2,9 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
+$PreviousAuditExport = [Environment]::GetEnvironmentVariable(
+    'RAGELIT_AUDIT_EXPORT_DIRECTORY', 'Process'
+)
 
 function Invoke-Gate {
     param(
@@ -31,6 +34,17 @@ try {
     Push-Location 'backend'
     try {
         Invoke-Gate 'Backend dependencies' 'uv' @('sync', '--frozen')
+        $AuditExport = if ([string]::IsNullOrWhiteSpace($PreviousAuditExport)) {
+            Join-Path $RepoRoot ('data/audit-reports/verification-' + [guid]::NewGuid())
+        } else {
+            [System.IO.Path]::GetFullPath($PreviousAuditExport)
+        }
+        if (Test-Path -LiteralPath $AuditExport) {
+            throw 'Audit exports need a fresh destination.'
+        }
+        [Environment]::SetEnvironmentVariable(
+            'RAGELIT_AUDIT_EXPORT_DIRECTORY', $AuditExport, 'Process'
+        )
         Invoke-Gate 'Backend format' 'uv' @(
             'run', 'ruff', 'format', '--check', 'app', 'tests'
         )
@@ -55,6 +69,10 @@ try {
         Invoke-Gate 'PostgreSQL integration tests' 'uv' @(
             'run', 'pytest', 'tests/integration', 'tests/api',
             'tests/test_migration_head.py', '-q'
+        )
+        Invoke-Gate 'Audit release artifacts' 'uv' @(
+            'run', '--frozen', 'python', '-m', 'app.audits.cli',
+            '--validate-reports', $AuditExport
         )
     }
     finally {
@@ -85,5 +103,8 @@ try {
     }
 }
 finally {
+    [Environment]::SetEnvironmentVariable(
+        'RAGELIT_AUDIT_EXPORT_DIRECTORY', $PreviousAuditExport, 'Process'
+    )
     Pop-Location
 }

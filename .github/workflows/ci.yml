@@ -10,7 +10,9 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 90
+    env:
+      RAGELIT_AUDIT_EXPORT_DIRECTORY: ${{ github.workspace }}/data/audit-reports/ci
     services:
       postgres:
         image: postgres:18-alpine
@@ -44,6 +46,13 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Verify
         run: bash scripts/verify.sh
+      - name: Upload validated audit reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: access-control-audits
+          path: data/audit-reports/ci/*.json
+          if-no-files-found: error
+          retention-days: 7
 
   security:
     runs-on: ubuntu-24.04

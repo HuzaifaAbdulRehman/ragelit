@@ -103,7 +103,7 @@ class AuditConfiguration(AuditModel):
 
     @model_validator(mode="after")
     def guard_targets(self) -> Self:
-        database = self.admin_url
+        database = make_url(self.database_admin_url.get_secret_value())
         if (
             database.drivername != "postgresql+psycopg"
             or not _loopback(database.host)
@@ -133,7 +133,15 @@ class AuditConfiguration(AuditModel):
 
     @property
     def admin_url(self) -> URL:
-        return make_url(self.database_admin_url.get_secret_value())
+        database = make_url(self.database_admin_url.get_secret_value())
+        return database.set(
+            port=database.port or 5432,
+            query=dict(database.query)
+            | {
+                "hostaddr": cast(str, database.host),
+                "connect_timeout": database.query.get("connect_timeout", "5"),
+            },
+        )
 
     @property
     def name(self) -> str:
@@ -197,7 +205,7 @@ class DocumentBinding(AuditModel):
 
 
 class InstanceBinding(AuditModel):
-    state: Literal["incomplete", "complete"] = "incomplete"
+    state: Literal["incomplete", "complete", "skipped"] = "incomplete"
     actor_id: UUID | None = None
     membership_id: UUID | None = None
     group_id: UUID | None = None

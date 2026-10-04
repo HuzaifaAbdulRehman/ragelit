@@ -409,8 +409,14 @@ class BundledAuditTarget:
         self.workspace, self.pack, self.profile = workspace, pack, profile
         self._cases = {case.id: case for case in pack.cases}
         self._executed: set[str] = set()
+        self._last_observation: AuditObservation | None = None
+
+    @property
+    def last_observation(self) -> AuditObservation | None:
+        return self._last_observation
 
     def execute(self, case: AuditCase) -> AuditObservation:
+        self._last_observation = None
         if self._cases.get(case.id) != case or case.id in self._executed:
             raise AuditWorkspaceError("audit_case_mismatch")
         request = self.pack.requests[case.id]
@@ -475,6 +481,9 @@ class BundledAuditTarget:
             self._executed.add(case.id)
             return observer.snapshot()
         finally:
-            app.state.generation_provider = previous_provider
-            app.state.observation_sink = previous_observer
-            app.state.chunk_store = previous_store
+            try:
+                self._last_observation = observer.snapshot()
+            finally:
+                app.state.generation_provider = previous_provider
+                app.state.observation_sink = previous_observer
+                app.state.chunk_store = previous_store

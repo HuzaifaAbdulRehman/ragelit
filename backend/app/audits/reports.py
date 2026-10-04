@@ -30,6 +30,14 @@ class AuditReport(AuditModel):
     coverage_complete: bool
     exit_code: Literal[0, 1, 2]
     inventory_reason: Reason | None = None
+    runtime_failed: bool = False
+    retrieval_notice: Literal[
+        "Retrieval evidence covers returned fused results, not internal "
+        "dense or sparse prefetch candidates."
+    ] = (
+        "Retrieval evidence covers returned fused results, not internal "
+        "dense or sparse prefetch candidates."
+    )
     scope_notice: Literal[
         "Synthetic fixtures and deterministic providers only; "
         "not a security certification or model-quality benchmark."
@@ -43,6 +51,8 @@ def build_report(
     cases: tuple[AuditCase, ...],
     results: tuple[AuditCaseResult, ...],
     metadata: RunMetadata,
+    *,
+    runtime_failed: bool = False,
 ) -> AuditReport:
     expected = {case.id: case for case in cases}
     counts = Counter(result.case_id for result in results)
@@ -58,8 +68,10 @@ def build_report(
         else result
         for result in results
     )
-    complete = inventory_complete and all(
-        result.coverage_complete for result in checked
+    complete = (
+        not runtime_failed
+        and inventory_complete
+        and all(result.coverage_complete for result in checked)
     )
     exit_code: Literal[0, 1, 2] = (
         2
@@ -75,6 +87,7 @@ def build_report(
         coverage_complete=complete,
         exit_code=exit_code,
         inventory_reason=None if inventory_complete else Reason.INVENTORY_INCOMPLETE,
+        runtime_failed=runtime_failed,
     )
 
 

@@ -2,13 +2,18 @@ from uuid import uuid4
 
 import pytest
 
-from app.audits.contracts import Boundary, Terminal
+from app.audits.contracts import AuditCase, Boundary, Terminal
 from app.audits.fixtures import generate_fixtures
 from app.audits.observer import AuditObserver
 from app.audits.reports import build_report
 from app.audits.scoring import score_case
-from app.audits.seeding import seed_workspace
-from app.audits.target import BundledAuditTarget, prepare_pack
+from app.audits.seeding import login_actor, seed_workspace
+from app.audits.target import (
+    BundledAuditTarget,
+    PreparedPack,
+    PreparedRequest,
+    prepare_pack,
+)
 from app.audits.workspace import AuditConfiguration, AuditWorkspace, AuditWorkspaceError
 from tests.integration.audits.support import audit_config as audit_config
 from tests.unit.audits.support import metadata
@@ -132,3 +137,73 @@ def test_target_rejects_changed_case_labels(
         with pytest.raises(AuditWorkspaceError, match="audit_case_mismatch"):
             target.execute(forged)
         assert workspace.bindings.checksum == before
+
+
+@pytest.mark.parametrize(
+    "profile,expected_status", [("safe", 200), ("vulnerable", 503)]
+)
+def test_post_request_failure_keeps_actual_boundary_observations(
+    audit_config: AuditConfiguration,
+    monkeypatch: pytest.MonkeyPatch,
+    profile: str,
+    expected_status: int,
+) -> None:
+    template = generate_fixtures()
+    with AuditWorkspace(audit_config, template) as workspace:
+        seed_workspace(workspace, template)
+        logical = next(
+            control for control in template.cases if control.id == "org-1:organization"
+        )
+        document = next(
+            document
+            for document in template.documents
+            if document.id == logical.document_id
+        )
+        actor = next(actor for actor in template.actors if actor.id == logical.actor_id)
+        organization = next(org for org in template.organizations if org.id == "org-1")
+        headers = login_actor(
+            workspace, email=actor.email, organization_slug=organization.slug
+        )
+        binding = workspace.bindings.documents[document.id]
+        foreign = tuple(
+            chunk
+            for doc in template.documents
+            if doc.organization_id != "org-1"
+            for chunk in workspace.bindings.documents[doc.id].chunk_ids
+        )
+        control = AuditCase(
+            id=logical.id,
+            expected_status=200,
+            positive=True,
+            required_chunks=binding.chunk_ids,
+            forbidden_chunks=foreign,
+        )
+        pack = PreparedPack(
+            uuid4(),
+            (control,),
+            {control.id: PreparedRequest(document.question, headers)},
+            template.canaries,
+            frozenset(
+                chunk
+                for bound in workspace.bindings.documents.values()
+                for chunk in bound.chunk_ids
+            ),
+        )
+        target = BundledAuditTarget(workspace, pack, profile=profile, lab=True)
+
+        def fail_snapshot() -> None:
+            raise RuntimeError("SyntheticSensitiveRuntimeMarker")
+
+        monkeypatch.setattr(workspace, "_save_snapshot", fail_snapshot)
+        with pytest.raises(RuntimeError, match="SyntheticSensitiveRuntimeMarker"):
+            target.execute(control)
+        observed = getattr(target, "last_observation", None)
+        assert observed is not None
+        assert observed.http_status == expected_status
+        assert score_case(control, observed).status == (
+            "pass" if profile == "safe" else "fail"
+        )
+        if profile == "vulnerable":
+            assert (
+                score_case(control, observed).first_exposure == Boundary.RETRIEVAL_RAW
+            )

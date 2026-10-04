@@ -16,6 +16,14 @@ run_gate "Fixture process cleanup" node --test scripts/tests/e2e-processes.test.
 
 cd "$repo_root/backend"
 run_gate "Backend dependencies" uv sync --frozen
+if [[ -z "${RAGELIT_AUDIT_EXPORT_DIRECTORY:-}" ]]; then
+  audit_run_id="$(uv run --frozen python -c 'from uuid import uuid4; print(uuid4())')"
+  export RAGELIT_AUDIT_EXPORT_DIRECTORY="$repo_root/data/audit-reports/verification-$audit_run_id"
+fi
+if [[ -e "$RAGELIT_AUDIT_EXPORT_DIRECTORY" || -L "$RAGELIT_AUDIT_EXPORT_DIRECTORY" ]]; then
+  printf '%s\n' 'Audit exports need a fresh destination.' >&2
+  exit 2
+fi
 run_gate "Backend format" uv run ruff format --check app tests
 run_gate "Backend lint" uv run ruff check app tests
 run_gate "CI script format" uv run ruff format --check --config pyproject.toml ../scripts
@@ -27,6 +35,9 @@ run_gate "Backend unit tests" \
   tests/test_repository_contract.py -q
 run_gate "PostgreSQL integration tests" \
   uv run pytest tests/integration tests/api tests/test_migration_head.py -q
+run_gate "Audit release artifacts" \
+  uv run --frozen python -m app.audits.cli \
+  --validate-reports "$RAGELIT_AUDIT_EXPORT_DIRECTORY"
 
 cd "$repo_root/frontend"
 run_gate "Frontend dependencies" npm ci

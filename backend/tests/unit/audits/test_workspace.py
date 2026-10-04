@@ -3,7 +3,10 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from psycopg._conninfo_attempts import conninfo_attempts
+from psycopg._conninfo_utils import get_param
 from pydantic import ValidationError
+from sqlalchemy import create_engine
 
 from app.audits.workspace import AuditConfiguration, AuditWorkspaceError
 
@@ -104,3 +107,33 @@ def test_config_hash_excludes_credentials_and_keeps_target_identity(
     )
     assert "AuditApplicationPasswordMarker" not in repr(first)
     assert "AuditFixturePasswordMarker" not in repr(first)
+
+
+@pytest.mark.parametrize("host", ["127.0.0.1", "::1"])
+def test_database_connections_ignore_ambient_destination_and_timeout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, host: str
+) -> None:
+    monkeypatch.setenv("PGHOSTADDR", "203.0.113.10")
+    monkeypatch.setenv("PGPORT", "6543")
+    monkeypatch.setenv("PGCONNECT_TIMEOUT", "600")
+    authority = f"[{host}]" if ":" in host else host
+    config = configuration(
+        tmp_path,
+        database_admin_url=f"postgresql+psycopg://postgres:postgres@{authority}/ragelit_audit_unit",
+    )
+    for url in (
+        config.admin_url.set(database="postgres"),
+        config.admin_url,
+        config.application_url,
+    ):
+        engine = create_engine(url)
+        try:
+            _, parameters = engine.dialect.create_connect_args(engine.url)
+            attempts = conninfo_attempts(parameters)
+            assert len(attempts) == 1
+            assert get_param(attempts[0], "hostaddr") == host
+            assert get_param(attempts[0], "port") == "5432"
+            assert get_param(attempts[0], "connect_timeout") == "5"
+        finally:
+            engine.dispose()
+    assert not config.root.exists()

@@ -181,5 +181,60 @@ scans offline without sending the dependency inventory to an external API.
 Missing inputs, invalid advisory records, scanner errors, and known
 vulnerabilities fail the check. The audit does not establish exploitability.
 
-Billing, invitations, automated audits, streaming, and benchmark comparisons
+## Synthetic access-control audit
+
+The audit CLI tests the real API, ingestion worker, PostgreSQL RLS, and Qdrant
+against generated documents. It uses deterministic embeddings and answers;
+no paid model is called. This checks access boundaries, not real-model quality
+or security certification. Retrieval observations cover fused results, not
+internal dense or sparse prefetch candidates.
+
+From `backend`, set these process-local variables for disposable local services:
+
+```powershell
+$AuditName = 'ragelit_audit_' + [guid]::NewGuid().ToString('N')
+$env:RAGELIT_AUDIT_ENVIRONMENT = 'local'
+$env:RAGELIT_AUDIT_DATABASE_ADMIN_URL = "postgresql+psycopg://postgres:postgres@127.0.0.1:5432/$AuditName"
+$env:RAGELIT_AUDIT_QDRANT_URL = 'http://127.0.0.1:6333'
+$env:RAGELIT_AUDIT_ROOT = Join-Path (Split-Path -Parent $PWD.Path) "data/audit-workspaces/$AuditName"
+$env:RAGELIT_AUDIT_APPLICATION_PASSWORD = [guid]::NewGuid().ToString('N')
+$env:RAGELIT_AUDIT_FIXTURE_PASSWORD = [guid]::NewGuid().ToString('N')
+uv run --frozen python -m app.audits.cli
+```
+
+Ordinary application settings are ignored. The CLI requires a loopback database
+whose name starts with `ragelit_audit_` and a matching workspace directory. It
+refuses unowned resources, changed ownership markers, and interrupted fixtures;
+it does not reset an existing workspace automatically. Choose a fresh name after
+an interrupted run. Audit resources remain local for inspection.
+
+A full safe run returns 0 only when all 51 cases pass. Completed control failures
+return 1. Missing evidence, runtime errors, partial runs, and report-write failures
+return 2. Use `--case org-1:organization` for a partial run; fixture preparation
+still prepares the whole pack. Normally completed partial runs mark unused
+instances as skipped, so the workspace can be used again. Actual interruptions
+remain incomplete and cannot be silently reused. Deliberately broken controls
+require `--lab`:
+
+```console
+uv run --frozen python -m app.audits.cli --profile vulnerable --lab
+uv run --frozen python -m app.audits.cli --profile deny_all --lab
+```
+
+Both broken profiles should return 1 with complete coverage. The vulnerable
+profile demonstrates raw retrieval exposure and later containment, not
+necessarily disclosure to the user. Deny-all proves that rejecting every query
+cannot earn a passing audit.
+
+Reports and SHA-256 receipts are written under the workspace's `reports` directory.
+They omit document bodies, questions, answers, tokens, and passwords. Verification
+scripts export only the three full-profile reports and their receipts to a fresh
+directory under `data/audit-reports`, then validate coverage, redaction, and the
+literal 0/1/1 gates before CI uploads them. Existing export destinations are
+refused. Set `RAGELIT_AUDIT_EXPORT_DIRECTORY` to choose another fresh destination.
+Keep the laptop awake during service-backed checks; sleep counts against subprocess
+timeouts. The CLI and report files are available separately from the portal;
+an audit dashboard is not implemented yet.
+
+Billing, invitations, the audit dashboard, streaming, and benchmark comparisons
 remain separate milestones.

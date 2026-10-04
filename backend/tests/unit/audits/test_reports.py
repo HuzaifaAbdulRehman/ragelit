@@ -12,6 +12,25 @@ from app.audits.scoring import score_case
 from tests.unit.audits.support import case, metadata, observation
 
 
+def test_reports_state_the_retrieval_observation_limit() -> None:
+    report = build_report((case(),), (score_case(case(), observation()),), metadata())
+    parsed = json.loads(report.model_dump_json())
+    assert parsed["retrieval_notice"] == (
+        "Retrieval evidence covers returned fused results, not internal "
+        "dense or sparse prefetch candidates."
+    )
+
+
+def test_runtime_failure_overrides_a_complete_passing_inventory() -> None:
+    report = build_report(
+        (case(),), (score_case(case(), observation()),), metadata(), runtime_failed=True
+    )
+    assert report.exit_code == 2
+    assert not report.coverage_complete
+    assert report.runtime_failed
+    assert report.results[0].status == "pass"
+
+
 def test_report_contains_typed_metadata_and_no_raw_fields(tmp_path: Path) -> None:
     report = build_report((case(),), (score_case(case(), observation()),), metadata())
     path = write_report(report, tmp_path)
