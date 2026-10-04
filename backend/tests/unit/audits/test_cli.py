@@ -90,6 +90,59 @@ def test_help_does_not_need_services_or_configuration() -> None:
     assert process.stderr == ""
 
 
+@pytest.mark.parametrize("interrupted", [False, True])
+def test_dependency_silencing_covers_native_output_and_restores_streams(
+    interrupted: bool,
+) -> None:
+    program = """
+import ctypes
+import os
+from app.audits.cli import _quiet_dependencies
+
+runtime = ctypes.CDLL('ucrtbase' if os.name == 'nt' else None)
+runtime.fflush.argtypes = [ctypes.c_void_p]
+runtime.setvbuf.argtypes = [
+    ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_size_t,
+]
+runtime.fwrite.argtypes = [
+    ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t, ctypes.c_void_p,
+]
+runtime.fwrite.restype = ctypes.c_size_t
+if os.name == 'nt':
+    runtime.__acrt_iob_func.argtypes = [ctypes.c_uint]
+    runtime.__acrt_iob_func.restype = ctypes.c_void_p
+    native_stdout = runtime.__acrt_iob_func(1)
+else:
+    native_stdout = ctypes.c_void_p.in_dll(runtime, 'stdout')
+buffer = ctypes.create_string_buffer(4096)
+assert runtime.setvbuf(native_stdout, buffer, 0, len(buffer)) == 0
+message = b'SyntheticBufferedNativeMarker\\n'
+try:
+    with _quiet_dependencies():
+        os.write(1, b'SyntheticNativeStdoutMarker\\n')
+        os.write(2, b'SyntheticNativeStderrMarker\\n')
+        print('SyntheticPythonMarker', flush=True)
+        assert runtime.fwrite(message, 1, len(message), native_stdout) == len(message)
+        if INTERRUPTED:
+            raise RuntimeError('SyntheticInterruptionMarker')
+except RuntimeError:
+    pass
+assert runtime.fflush(None) == 0
+os.write(1, b'visible stdout\\n')
+os.write(2, b'visible stderr\\n')
+""".replace("INTERRUPTED", repr(interrupted))
+    process = subprocess.run(
+        [sys.executable, "-c", program],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert process.returncode == 0
+    assert process.stdout == "visible stdout\n"
+    assert process.stderr == "visible stderr\n"
+
+
 def test_artifact_validation_is_read_only_and_has_bounded_diagnostics(
     tmp_path: Path,
 ) -> None:

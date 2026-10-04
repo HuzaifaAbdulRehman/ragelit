@@ -91,7 +91,8 @@ reuse the evidence.
 
 CI now allows 90 minutes because the prior Linux suite alone took 38 minutes.
 Its artifact gate requires complete safe/vulnerable/deny-all outcomes before
-upload. Hosted CI has not run; no push or merge is included in this handoff.
+upload. At the original engine handoff, hosted CI had not run and the branch
+had not been pushed or merged.
 
 Retrieval observations cover fused results only. Synthetic fixtures do not
 measure real-model quality, injection resistance, or production performance.
@@ -99,3 +100,30 @@ The audit dashboard and remote targets are outside this slice. Resistance
 to a malicious local administrator racing filesystem/database changes is
 not established. Bounded retained workspaces may need a fresh namespace or
 separately approved recovery. No security certification is claimed.
+
+## Follow-up after the requested push
+
+The branch was pushed on 4 October. Hosted run
+[37220374919](https://github.com/HuzaifaAbdulRehman/ragelit/actions/runs/37220374919)
+passed its security job, including the current downloaded advisory databases.
+Verification stopped at unit tests: 177 passed and five CLI tests failed.
+ONNX wrote a native stderr warning that Python stream redirection did not catch.
+Later integration, artifact-upload, and browser steps did not run.
+
+The CLI quiet scope now redirects descriptors and flushes host C stdio before
+redirection and before restoration. Two regression cases failed before the
+descriptor fix; both failed again when extended to buffered native output.
+After the flush fix, `uv run --frozen pytest tests/unit/audits/test_cli.py
+tests/unit/audits/test_artifacts.py -q` passed 26 tests in 64.52 seconds on
+Windows. Ruff formatting/lint and mypy passed for the two changed files.
+The saved Windows release reports still validate with exit 0 without rerunning
+cases. One focused review found the buffering gap; its amended review reports
+no remaining findings. This does not establish cross-CRT or direct Win32 output
+suppression. Hosted verification of the fix is pending; the old full gates are
+evidence for the earlier implementation, not a full-suite claim for this change.
+
+Issues 1 through 13 are closed against delivered main-branch evidence. M2/M3
+tracking is backfilled in issues 15/16. M4 engine verification, the hosted CI
+fix, dashboard, injection pack, and HTML export remain open in issues 17 to 21.
+Isolation comparison, benchmarks, and the private v0.1 release remain open in
+issues 22 to 24. The dashboard task plan awaits user review before implementation.

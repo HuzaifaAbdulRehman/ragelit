@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ctypes
 import hashlib
 import json
 import logging
@@ -9,7 +10,7 @@ import subprocess
 import sys
 import warnings
 from collections.abc import Iterator
-from contextlib import contextmanager, redirect_stderr, redirect_stdout
+from contextlib import ExitStack, contextmanager, redirect_stderr, redirect_stdout
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, NoReturn
 from uuid import UUID, uuid4
@@ -39,6 +40,12 @@ class _Parser(argparse.ArgumentParser):
 
 @contextmanager
 def _quiet_dependencies() -> Iterator[None]:
+    sys.stdout.flush()
+    sys.stderr.flush()
+    native_runtime = ctypes.CDLL("ucrtbase" if os.name == "nt" else None)
+    native_runtime.fflush.argtypes = [ctypes.c_void_p]
+    if native_runtime.fflush(None) != 0:
+        raise OSError("audit_stream_flush_failed")
     previous = logging.root.manager.disable
     logging.disable(logging.CRITICAL)
     try:
@@ -47,9 +54,20 @@ def _quiet_dependencies() -> Iterator[None]:
             redirect_stdout(destination),
             redirect_stderr(destination),
             warnings.catch_warnings(),
+            ExitStack() as native_streams,
         ):
+            for descriptor in (1, 2):
+                original = os.dup(descriptor)
+                native_streams.callback(os.close, original)
+                native_streams.callback(os.dup2, original, descriptor)
+                os.dup2(destination.fileno(), descriptor)
             warnings.simplefilter("ignore")
-            yield
+            try:
+                yield
+            finally:
+                destination.flush()
+                if native_runtime.fflush(None) != 0:
+                    raise OSError("audit_stream_flush_failed")
     finally:
         logging.disable(previous)
 
