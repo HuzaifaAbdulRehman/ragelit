@@ -78,17 +78,7 @@ class QdrantChunkStore:
 
     def ensure_collection(self) -> None:
         if not self.client.collection_exists(self.collection_name):
-            self.client.create_collection(
-                self.collection_name,
-                vectors_config={
-                    "dense": models.VectorParams(
-                        size=self.dimension, distance=models.Distance.COSINE
-                    )
-                },
-                sparse_vectors_config={
-                    "sparse": models.SparseVectorParams(modifier=models.Modifier.IDF)
-                },
-            )
+            self._create_collection()
         info = self.client.get_collection(self.collection_name)
         vectors = info.config.params.vectors
         sparse = info.config.params.sparse_vectors
@@ -149,6 +139,25 @@ class QdrantChunkStore:
                 field_schema=models.PayloadSchemaType.BOOL,
                 wait=True,
             )
+
+    def _create_collection(self) -> None:
+        self.client.create_collection(
+            self.collection_name,
+            vectors_config={
+                "dense": models.VectorParams(
+                    size=self.dimension, distance=models.Distance.COSINE
+                )
+            },
+            sparse_vectors_config={
+                "sparse": models.SparseVectorParams(modifier=models.Modifier.IDF)
+            },
+        )
+
+    def collection_names(self) -> tuple[str, ...]:
+        return (self.collection_name,)
+
+    def ensure_tenants(self, organizations: tuple[UUID, ...]) -> None:
+        pass
 
     def stage(
         self,

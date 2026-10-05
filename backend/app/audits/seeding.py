@@ -166,6 +166,7 @@ def seed_workspace(
                 "memberships": memberships,
             }
         )
+        workspace.store.ensure_tenants(tuple(organizations.values()))
     cast(
         FastAPI, workspace.client.app
     ).state.generation_provider = FixtureCitingProvider()

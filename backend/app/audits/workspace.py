@@ -94,6 +94,9 @@ def _guard_path(path: Path, root: Path) -> None:
 
 class AuditConfiguration(AuditModel):
     environment: Literal["local", "test"]
+    vector_strategy: Literal["shared_pre_filter", "tenant_collections"] = (
+        "shared_pre_filter"
+    )
     database_admin_url: SecretStr = Field(repr=False)
     qdrant_url: str
     root: Path
@@ -161,19 +164,20 @@ class AuditConfiguration(AuditModel):
     @property
     def config_hash(self) -> str:
         endpoint = urlsplit(self.qdrant_url)
-        return _hash(
-            {
-                "environment": self.environment,
-                "database": self.name,
-                "database_host": self.admin_url.host,
-                "database_port": self.admin_url.port or 5432,
-                "qdrant_host": endpoint.hostname,
-                "qdrant_port": endpoint.port,
-                "qdrant_timeout_seconds": self.qdrant_timeout_seconds,
-                "collection": self.name,
-                "root": str(self.root.resolve()),
-            }
-        )
+        identity = {
+            "environment": self.environment,
+            "database": self.name,
+            "database_host": self.admin_url.host,
+            "database_port": self.admin_url.port or 5432,
+            "qdrant_host": endpoint.hostname,
+            "qdrant_port": endpoint.port,
+            "qdrant_timeout_seconds": self.qdrant_timeout_seconds,
+            "collection": self.name,
+            "root": str(self.root.resolve()),
+        }
+        if self.vector_strategy != "shared_pre_filter":
+            identity["vector_strategy"] = self.vector_strategy
+        return _hash(identity)
 
     @property
     def workspace_id(self) -> UUID:
@@ -260,6 +264,30 @@ class AuditWorkspace:
             raise AuditWorkspaceError("audit_workspace_not_open")
         return self._admin_engine
 
+    def _make_store(self) -> QdrantChunkStore:
+        assert self._vector_client is not None
+        if self.config.vector_strategy == "tenant_collections":
+            from app.audits.isolation_store import TenantCollectionStore
+
+            return TenantCollectionStore(
+                self._vector_client,
+                self.config,
+                dimension=FixtureEmbeddings.dimension,
+                organizations=lambda: tuple(self.bindings.organizations.values()),
+            )
+        return QdrantChunkStore(
+            self._vector_client, self.config.name, dimension=FixtureEmbeddings.dimension
+        )
+
+    def _namespace_names(self) -> set[str]:
+        assert self._vector_client is not None
+        return {
+            item.name
+            for item in self._vector_client.get_collections().collections
+            if item.name == self.config.name
+            or item.name.startswith(f"{self.config.name}_tenant_")
+        }
+
     def __enter__(self) -> Self:
         self.config.validate_paths()
         try:
@@ -299,11 +327,7 @@ class AuditWorkspace:
                 if _MARKER not in inspect(self.admin_engine).get_table_names():
                     raise AuditWorkspaceError("unowned_audit_workspace")
                 self._load()
-            self.store = QdrantChunkStore(
-                self._vector_client,
-                self.config.name,
-                dimension=FixtureEmbeddings.dimension,
-            )
+            self.store = self._make_store()
             self.validate_owned()
             self._application_engine = create_engine(
                 self.config.application_url, hide_parameters=True
@@ -346,7 +370,12 @@ class AuditWorkspace:
 
     def _bootstrap(self) -> None:
         assert self._lock is not None and self._vector_client is not None
-        if self._vector_client.collection_exists(self.config.name) or (
+        vector_exists = (
+            bool(self._namespace_names())
+            if self.config.vector_strategy == "tenant_collections"
+            else self._vector_client.collection_exists(self.config.name)
+        )
+        if vector_exists or (
             self.config.root.exists() and any(self.config.root.iterdir())
         ):
             raise AuditWorkspaceError("unowned_audit_workspace")
@@ -437,9 +466,7 @@ class AuditWorkspace:
                 },
             )
         self.config.root.mkdir(parents=True, exist_ok=True)
-        self.store = QdrantChunkStore(
-            self._vector_client, self.config.name, dimension=FixtureEmbeddings.dimension
-        )
+        self.store = self._make_store()
         self.store.ensure_collection()
         self._save_snapshot()
 
@@ -477,24 +504,31 @@ class AuditWorkspace:
         return result
 
     def _point_snapshot(self) -> dict[str, str]:
-        if not self.store.client.collection_exists(self.config.name):
+        collections = self.store.collection_names()
+        separated = self.config.vector_strategy == "tenant_collections"
+        if separated and self._namespace_names() != set(collections):
             raise AuditWorkspaceError("audit_resource_drift")
         result: dict[str, str] = {}
-        offset: int | str | UUID | None = None
-        while True:
-            points, offset = self.store.client.scroll(
-                self.config.name,
-                limit=256,
-                offset=offset,
-                with_payload=True,
-                with_vectors=True,
-            )
-            for point in points:
-                result[str(point.id)] = _hash(point.model_dump(mode="json"))
-            if len(result) > 5000:
+        for name in collections:
+            if not self.store.client.collection_exists(name):
                 raise AuditWorkspaceError("audit_resource_drift")
-            if offset is None:
-                return result
+            offset: int | str | UUID | None = None
+            while True:
+                points, offset = self.store.client.scroll(
+                    name,
+                    limit=256,
+                    offset=offset,
+                    with_payload=True,
+                    with_vectors=True,
+                )
+                for point in points:
+                    key = f"{name}/{point.id}" if separated else str(point.id)
+                    result[key] = _hash(point.model_dump(mode="json"))
+                if len(result) > 5000:
+                    raise AuditWorkspaceError("audit_resource_drift")
+                if offset is None:
+                    break
+        return result
 
     def _validate_uploads(self) -> None:
         expected: dict[Path, str] = {}
