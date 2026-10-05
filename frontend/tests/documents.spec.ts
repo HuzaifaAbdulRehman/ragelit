@@ -1,3 +1,4 @@
+import { closeSync, ftruncateSync, openSync } from "node:fs"
 import { expect, test } from "@playwright/test"
 import {
   document,
@@ -77,7 +78,7 @@ test("upload raw bytes queues a restricted document and polls until ready", asyn
 
 test("unsupported and oversized files are rejected before upload", async ({
   page,
-}) => {
+}, testInfo) => {
   await mockSession(page)
   await page.route("**/api/v1/documents?*", (route) =>
     route.fulfill({ json: [] }),
@@ -98,11 +99,14 @@ test("unsupported and oversized files are rejected before upload", async ({
     .getByRole("button", { name: "Upload document", exact: true })
     .click()
   await expect(page.getByRole("alert")).toContainText("TXT, Markdown, DOCX")
-  await page.getByLabel("Document file").setInputFiles({
-    name: "large.txt",
-    mimeType: "text/plain",
-    buffer: Buffer.alloc(25 * 1024 * 1024 + 1),
-  })
+  const largeFile = testInfo.outputPath("large.txt")
+  const descriptor = openSync(largeFile, "w")
+  try {
+    ftruncateSync(descriptor, 25 * 1024 * 1024 + 1)
+  } finally {
+    closeSync(descriptor)
+  }
+  await page.getByLabel("Document file").setInputFiles(largeFile)
   await page
     .getByRole("button", { name: "Upload document", exact: true })
     .click()
