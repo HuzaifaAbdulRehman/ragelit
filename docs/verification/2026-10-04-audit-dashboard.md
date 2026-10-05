@@ -80,6 +80,18 @@ processes were left alone.
 
 ## Limits
 
+The first hosted run for PR #25 passed 209 unit checks and failed the
+SIGTERM regression because ONNX printed a hardware-discovery warning
+during dependency imports. Security jobs passed. A controlled native-warning
+case reproduced the stderr failure on Linux: 1 failed, 1 passed.
+The test now silences startup imports with the existing CLI context,
+then restores streams before running the worker. Every shutdown assertion
+is unchanged. Seven focused worker and stream-restoration checks passed
+in 45.38 seconds; Ruff and mypy passed for the changed file. Production
+code did not change. Hosted verification of this test correction is pending.
+Logs: `pr-25-ci-failure.log`, `ci-native-import-red.log`, and
+`ci-native-import-green.log` in the retained dashboard ledger directory.
+
 The earlier inconclusive report and its owned fixtures are retained;
 they were not replayed or purged. Memory exhaustion was observed during
 the failed browser retry, but it does not establish every earlier failure's
@@ -90,4 +102,6 @@ These checks use synthetic documents and deterministic providers. They do
 not establish real-model answer quality, production scale, company-upload
 privacy, security certification, or crash-proof fencing after SIGKILL.
 Injection trials, HTML exports, benchmarks, streaming and automatic purge
-remain outside this slice. No push, merge or visibility change is recorded.
+remain outside this slice. The branch is pushed in
+[PR #25](https://github.com/HuzaifaAbdulRehman/ragelit/pull/25).
+No merge or visibility change is recorded.

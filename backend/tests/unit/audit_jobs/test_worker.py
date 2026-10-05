@@ -43,16 +43,23 @@ def test_recovery_arguments_require_explicit_exclusive_confirmation(
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX worker termination")
-def test_sigterm_reaps_owned_child_before_worker_exit(tmp_path: Path) -> None:
+@pytest.mark.parametrize("startup_noise", [False, True])
+def test_sigterm_reaps_owned_child_before_worker_exit(
+    tmp_path: Path, startup_noise: bool
+) -> None:
     ready = tmp_path / "child-pid"
     outcome_path = tmp_path / "outcome.json"
     program = f"""
-import json, subprocess, sys
+import json, os, subprocess, sys
 from pathlib import Path
 from uuid import uuid4
-from app.workers import audit
-from app.audit_jobs.execution import run_cli
-from tests.unit.audit_jobs.test_execution import configuration
+from app.audits.cli import _quiet_dependencies
+with _quiet_dependencies():
+    if {startup_noise!r}:
+        os.write(2, b"SyntheticNativeStartupWarning\\n")
+    from app.workers import audit
+    from app.audit_jobs.execution import run_cli
+    from tests.unit.audit_jobs.test_execution import configuration
 
 original = subprocess.Popen
 children = []
