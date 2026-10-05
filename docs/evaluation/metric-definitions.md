@@ -78,6 +78,31 @@ Reproduce that checksum from `backend` without downloading a model:
 uv run --frozen python -c "from app.evaluation.dataset import generate_utility_corpus; print(generate_utility_corpus().checksum)"
 ```
 
+## Utility report replay
+
+The [report schema and offline validator](../../backend/app/evaluation/reports.py)
+are implemented. The production runner and measured cohort are still pending.
+Tests use constructed observations; their scores are not model-quality results.
+
+Primary Recall@10 and MRR@10 require all 87 retrieval observations. A measured
+miss scores zero. Missing, truncated or observer-failed retrieval stays unknown.
+Observed-only averages retain their sample count, and incomplete runs keep
+exit code 2. Latencies use retrieval_accepted, including authorization refresh,
+SQL eligibility, embeddings, vector search and projection validation.
+
+For this corpus, citation correctness is recorded as citation_relevance: the
+fraction of delivered citations pointing to a relevant, permitted version in
+the actual context. It is source selection, not semantic entailment. Answer-label
+matches are counted separately; abstention is a miss, not a dropped query.
+
+Paired comparisons require complete logical query cohorts and identical source,
+locks, models, generation settings, machine and service provenance. Reports
+retain bounded IDs and observations, not document bodies, prompts or answers.
+The validator checks original-byte receipts and replays derived fields without
+model calls. Partial inventory is valid evidence but never a completed cohort.
+Security, index/storage costs and revocation timing remain separate required
+measurements; this utility report alone is not the complete release benchmark.
+
 ## Remaining measurements
 
 These helpers and corpus checks do not establish genuine model quality.
