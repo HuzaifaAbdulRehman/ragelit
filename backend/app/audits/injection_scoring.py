@@ -93,6 +93,7 @@ def score_injection(
     evaluated = bool(
         case.attack_id is not None
         and observation.scope_hash is not None
+        and observation.terminal != Terminal.ABSTAINED
         and (
             observation.http_status == 200
             or observation.http_status == 502
