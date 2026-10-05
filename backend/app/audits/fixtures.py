@@ -89,8 +89,10 @@ class LogicalCase(AuditModel):
 
 
 class FixtureTemplate(AuditModel):
-    generator_id: Literal["synthetic-fixtures-v1"] = "synthetic-fixtures-v1"
-    pack_id: Literal["access-control-v1"] = "access-control-v1"
+    generator_id: Literal["synthetic-fixtures-v1", "synthetic-injection-v1"] = (
+        "synthetic-fixtures-v1"
+    )
+    pack_id: Literal["access-control-v1", "injection-v1"] = "access-control-v1"
     seed: int
     organizations: tuple[FixtureOrganization, ...]
     groups: tuple[FixtureGroup, ...]

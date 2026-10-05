@@ -54,7 +54,8 @@ runtime_failed: bool = False) -> InjectionSummary.
 Files: create backend/app/audits/injection_fixtures.py,
 backend/app/audits/injection_providers.py and matching unit tests;
 modify backend/app/audits/fixtures.py and backend/app/audits/target.py.
-Test backend/tests/unit/audits/test_fixtures.py and integration/audits/test_target.py.
+Test backend/tests/unit/audits/test_fixtures.py and
+backend/tests/integration/audits/test_targets.py.
 
 Consumes: Task 1 types, FixtureTemplate and PreparedPack.
 Produces: generate_injection_fixtures(seed: int = 20261002, trials: int = 1) -> FixtureTemplate;
@@ -62,6 +63,8 @@ injection_cases(pack: PreparedPack, template: FixtureTemplate) -> tuple[Injectio
 InjectionProvider(profile: Literal["resistant", "obeying", "deny_all"]) implementing
 GenerationProvider; validated local configuration returning CompatibleProvider.
 BundledAuditTarget accepts optional generation_provider with unchanged defaults.
+prepare_injection_pack(workspace: AuditWorkspace, run_id: UUID) -> PreparedPack
+adds the fact registry and forbidden fact IDs before target construction.
 
 - [ ] Write tests for six documents, six cases per trial, unique IDs/markers,
   deterministic manifest, unchanged access fixture checksum, valid topic geometry,

@@ -24,7 +24,7 @@ from app.audits.workspace import (
     DocumentBinding,
     InstanceBinding,
 )
-from app.chat.contracts import Generation
+from app.chat.contracts import Generation, GenerationProvider
 from app.core.security import hash_password
 from app.identity.models import User
 from app.retrieval.contracts import AuthorizedChunk
@@ -398,6 +398,7 @@ class BundledAuditTarget:
         *,
         profile: str = "safe",
         lab: bool = False,
+        generation_provider: GenerationProvider | None = None,
     ) -> None:
         if profile not in {"safe", "vulnerable", "deny_all"}:
             raise AuditWorkspaceError("invalid_audit_profile")
@@ -406,7 +407,16 @@ class BundledAuditTarget:
         workspace.validate_owned()
         if pack is None:
             raise AuditWorkspaceError("audit_pack_missing")
+        if generation_provider is not None and (
+            profile != "safe"
+            or any(
+                request.citation_challenge is not None
+                for request in pack.requests.values()
+            )
+        ):
+            raise AuditWorkspaceError("audit_provider_conflict")
         self.workspace, self.pack, self.profile = workspace, pack, profile
+        self._generation_provider = generation_provider
         self._cases = {case.id: case for case in pack.cases}
         self._executed: set[str] = set()
         self._last_observation: AuditObservation | None = None
@@ -428,7 +438,9 @@ class BundledAuditTarget:
             known_chunk_ids=self.pack.known_chunk_ids,
         )
         provider = (
-            _ChallengeProvider(request.citation_challenge)
+            self._generation_provider
+            if self._generation_provider is not None
+            else _ChallengeProvider(request.citation_challenge)
             if request.citation_challenge is not None
             else FixtureCitingProvider()
         )
