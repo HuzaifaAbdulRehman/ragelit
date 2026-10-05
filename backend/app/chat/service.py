@@ -16,6 +16,7 @@ from app.chat.schemas import (
     TraceResponse,
 )
 from app.documents.extraction import DocumentError
+from app.observability import ObservationSink
 from app.retrieval.service import AuthorizedRetriever
 from app.tenancy.scope import AccessScope
 
@@ -65,13 +66,16 @@ def query_documents(
     session: Session,
     retriever: AuthorizedRetriever,
     provider: GenerationProvider,
+    observer: ObservationSink | None = None,
 ) -> ChatOutcome:
     run = QueryRun(organization_id=scope.organization_id, user_id=scope.user_id)
     session.add(run)
     session.flush()
     started = perf_counter()
     try:
-        chunks = retriever.search(scope, command.question, command.limit)
+        chunks = retriever.search(
+            scope, command.question, command.limit, observer=observer
+        )
     except Exception as error:
         code, status = (
             (error.code, error.status)
@@ -80,6 +84,8 @@ def query_documents(
         )
         _stage(session, run, "retrieval", code, started)
         return _failed(session, run, code, status)
+    if observer is not None:
+        observer.chunks("retrieval_accepted", chunks, (perf_counter() - started) * 1000)
     _stage(
         session,
         run,
@@ -90,6 +96,8 @@ def query_documents(
     )
     started = perf_counter()
     context = build_context(chunks)
+    if observer is not None:
+        observer.chunks("context", context, (perf_counter() - started) * 1000)
     _stage(
         session,
         run,
@@ -118,6 +126,12 @@ def query_documents(
             code, status = "generation_unavailable", 502
         _stage(session, run, "generation", code, started)
         return _failed(session, run, code, status)
+    if observer is not None:
+        observer.generation(
+            generation.answer,
+            generation.citation_ids,
+            (perf_counter() - started) * 1000,
+        )
     _stage(session, run, "generation", "complete", started)
     started = perf_counter()
     manifest = {chunk.id: chunk for chunk in context}
@@ -141,6 +155,8 @@ def query_documents(
     answer = generation.answer.strip() or None
     run.state = "answered" if answer else "abstained"
     session.commit()
+    if observer is not None:
+        observer.delivery(answer, cited)
     return ChatOutcome(
         AnswerResponse(
             query_run_id=run.id,

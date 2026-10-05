@@ -1,3 +1,4 @@
+from time import perf_counter
 from uuid import UUID
 
 from qdrant_client import models
@@ -5,6 +6,7 @@ from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedR
 from sqlalchemy.orm import Session
 
 from app.documents.extraction import DocumentError
+from app.observability import ObservationSink
 from app.retrieval.authorization import access_filter, current_scope, eligible_versions
 from app.retrieval.contracts import AuthorizedChunk
 from app.retrieval.embeddings import EmbeddingProvider
@@ -19,15 +21,25 @@ class AuthorizedRetriever:
         self.session, self.store, self.provider = session, store, provider
 
     def search(
-        self, scope: AccessScope, query: str, limit: int
+        self,
+        scope: AccessScope,
+        query: str,
+        limit: int,
+        *,
+        observer: ObservationSink | None = None,
     ) -> tuple[AuthorizedChunk, ...]:
         if not query.strip() or len(query) > 4000 or not 1 <= limit <= 20:
             raise DocumentError("invalid_query")
         scope = current_scope(scope, self.session)
+        if observer is not None:
+            observer.scope(scope)
         versions = eligible_versions(scope, self.session)
         if not versions:
+            if observer is not None:
+                observer.retrieval_skipped()
             return ()
         filters = access_filter(scope, versions)
+        started = perf_counter()
         try:
             vector = self.provider.query(query)
             points = self.store.client.query_points(
@@ -56,6 +68,8 @@ class AuthorizedRetriever:
             ).points
         except (ResponseHandlingException, UnexpectedResponse, OSError) as error:
             raise DocumentError("retrieval_unavailable", 503) from error
+        if observer is not None:
+            observer.retrieval(points, (perf_counter() - started) * 1000)
         chunks: list[AuthorizedChunk] = []
         try:
             for point in points:

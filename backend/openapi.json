@@ -145,6 +145,619 @@
         "title": "AnswerResponse",
         "type": "object"
       },
+      "AuditCaseResult": {
+        "additionalProperties": false,
+        "properties": {
+          "case_id": {
+            "pattern": "^[A-Za-z0-9_.:-]{1,80}$",
+            "title": "Case Id",
+            "type": "string"
+          },
+          "coverage_complete": {
+            "title": "Coverage Complete",
+            "type": "boolean"
+          },
+          "first_exposure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Boundary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "observation": {
+            "$ref": "#/components/schemas/AuditObservation"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/Reason"
+          },
+          "status": {
+            "enum": [
+              "pass",
+              "fail",
+              "inconclusive"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "case_id",
+          "status",
+          "reason",
+          "coverage_complete",
+          "observation"
+        ],
+        "title": "AuditCaseResult",
+        "type": "object"
+      },
+      "AuditObservation": {
+        "additionalProperties": false,
+        "properties": {
+          "boundaries": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/BoundaryEvidence"
+            },
+            "maxItems": 7,
+            "title": "Boundaries",
+            "type": "array"
+          },
+          "case_id": {
+            "pattern": "^[A-Za-z0-9_.:-]{1,80}$",
+            "title": "Case Id",
+            "type": "string"
+          },
+          "denial_code": {
+            "anyOf": [
+              {
+                "enum": [
+                  "membership_inactive",
+                  "authentication_failed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denial Code"
+          },
+          "http_status": {
+            "maximum": 599.0,
+            "minimum": 100.0,
+            "title": "Http Status",
+            "type": "integer"
+          },
+          "scope_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope Hash"
+          },
+          "terminal": {
+            "$ref": "#/components/schemas/Terminal"
+          }
+        },
+        "required": [
+          "case_id",
+          "http_status",
+          "terminal"
+        ],
+        "title": "AuditObservation",
+        "type": "object"
+      },
+      "AuditReport": {
+        "additionalProperties": false,
+        "properties": {
+          "coverage_complete": {
+            "title": "Coverage Complete",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "exit_code": {
+            "enum": [
+              0,
+              1,
+              2
+            ],
+            "title": "Exit Code",
+            "type": "integer"
+          },
+          "inventory_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Reason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/RunMetadata"
+          },
+          "required_case_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Required Case Ids",
+            "type": "array"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/AuditCaseResult"
+            },
+            "maxItems": 500,
+            "title": "Results",
+            "type": "array"
+          },
+          "retrieval_notice": {
+            "const": "Retrieval evidence covers returned fused results, not internal dense or sparse prefetch candidates.",
+            "default": "Retrieval evidence covers returned fused results, not internal dense or sparse prefetch candidates.",
+            "title": "Retrieval Notice",
+            "type": "string"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "runtime_failed": {
+            "default": false,
+            "title": "Runtime Failed",
+            "type": "boolean"
+          },
+          "schema_version": {
+            "const": "1",
+            "default": "1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "scope_notice": {
+            "const": "Synthetic fixtures and deterministic providers only; not a security certification or model-quality benchmark.",
+            "default": "Synthetic fixtures and deterministic providers only; not a security certification or model-quality benchmark.",
+            "title": "Scope Notice",
+            "type": "string"
+          }
+        },
+        "required": [
+          "metadata",
+          "required_case_ids",
+          "results",
+          "coverage_complete",
+          "exit_code"
+        ],
+        "title": "AuditReport",
+        "type": "object"
+      },
+      "AuditRunCreate": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "AuditRunCreate",
+        "type": "object"
+      },
+      "AuditRunDetail": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "exit_code": {
+            "anyOf": [
+              {
+                "enum": [
+                  0,
+                  1,
+                  2
+                ],
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Code"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "unknown",
+              "pass",
+              "fail",
+              "inconclusive"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "report": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuditReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "report_available": {
+            "title": "Report Available",
+            "type": "boolean"
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Id"
+          },
+          "report_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Sha256"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "finished",
+              "recovery_required"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "started_at",
+          "finished_at",
+          "state",
+          "outcome",
+          "exit_code",
+          "error_code",
+          "report_available",
+          "report_id",
+          "report_sha256",
+          "report"
+        ],
+        "title": "AuditRunDetail",
+        "type": "object"
+      },
+      "AuditRunList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AuditRunSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "AuditRunList",
+        "type": "object"
+      },
+      "AuditRunSummary": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "exit_code": {
+            "anyOf": [
+              {
+                "enum": [
+                  0,
+                  1,
+                  2
+                ],
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Code"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "unknown",
+              "pass",
+              "fail",
+              "inconclusive"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "report_available": {
+            "title": "Report Available",
+            "type": "boolean"
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Id"
+          },
+          "report_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Sha256"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "finished",
+              "recovery_required"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "started_at",
+          "finished_at",
+          "state",
+          "outcome",
+          "exit_code",
+          "error_code",
+          "report_available",
+          "report_id",
+          "report_sha256"
+        ],
+        "title": "AuditRunSummary",
+        "type": "object"
+      },
+      "Boundary": {
+        "enum": [
+          "retrieval_raw",
+          "retrieval_accepted",
+          "context",
+          "output_candidate",
+          "output_delivered",
+          "citations_candidate",
+          "citations_delivered"
+        ],
+        "title": "Boundary",
+        "type": "string"
+      },
+      "BoundaryEvidence": {
+        "additionalProperties": false,
+        "properties": {
+          "boundary": {
+            "$ref": "#/components/schemas/Boundary"
+          },
+          "canary_matches": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CanaryMatch"
+            },
+            "maxItems": 20,
+            "title": "Canary Matches",
+            "type": "array"
+          },
+          "chunk_ids": {
+            "default": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Chunk Ids",
+            "type": "array"
+          },
+          "decision": {
+            "default": "normal",
+            "enum": [
+              "normal",
+              "query_skipped"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "duration_ms": {
+            "default": 0.0,
+            "minimum": 0.0,
+            "title": "Duration Ms",
+            "type": "number"
+          },
+          "sequence": {
+            "minimum": 0.0,
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "state": {
+            "default": "observed",
+            "enum": [
+              "observed",
+              "not_reached",
+              "unobserved"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "truncated": {
+            "default": false,
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "boundary",
+          "sequence"
+        ],
+        "title": "BoundaryEvidence",
+        "type": "object"
+      },
+      "CanaryMatch": {
+        "additionalProperties": false,
+        "properties": {
+          "canary_id": {
+            "pattern": "^[A-Za-z0-9_.:-]{1,80}$",
+            "title": "Canary Id",
+            "type": "string"
+          },
+          "count": {
+            "default": 1,
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "offsets": {
+            "default": [],
+            "items": {
+              "minimum": 0.0,
+              "type": "integer"
+            },
+            "maxItems": 20,
+            "title": "Offsets",
+            "type": "array"
+          }
+        },
+        "required": [
+          "canary_id"
+        ],
+        "title": "CanaryMatch",
+        "type": "object"
+      },
       "Citation": {
         "properties": {
           "chunk_id": {
@@ -496,6 +1109,18 @@
         "title": "QueryCommand",
         "type": "object"
       },
+      "Reason": {
+        "enum": [
+          "control_passed",
+          "forbidden_evidence",
+          "positive_evidence_missing",
+          "incomplete_evidence",
+          "invalid_observation",
+          "inventory_incomplete"
+        ],
+        "title": "Reason",
+        "type": "string"
+      },
       "Role": {
         "enum": [
           "owner",
@@ -517,6 +1142,89 @@
           "role"
         ],
         "title": "RoleChange",
+        "type": "object"
+      },
+      "RunMetadata": {
+        "additionalProperties": false,
+        "properties": {
+          "binding_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Binding Hash",
+            "type": "string"
+          },
+          "config_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Config Hash",
+            "type": "string"
+          },
+          "embedding_id": {
+            "pattern": "^[A-Za-z0-9_.:-]{1,80}$",
+            "title": "Embedding Id",
+            "type": "string"
+          },
+          "generator_id": {
+            "pattern": "^[A-Za-z0-9_.:-]{1,80}$",
+            "title": "Generator Id",
+            "type": "string"
+          },
+          "git_dirty": {
+            "title": "Git Dirty",
+            "type": "boolean"
+          },
+          "git_revision": {
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Git Revision",
+            "type": "string"
+          },
+          "lock_hashes": {
+            "items": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Lock Hashes",
+            "type": "array"
+          },
+          "pack_id": {
+            "pattern": "^[A-Za-z0-9_.:-]{1,80}$",
+            "title": "Pack Id",
+            "type": "string"
+          },
+          "profile": {
+            "enum": [
+              "safe",
+              "vulnerable",
+              "deny_all"
+            ],
+            "title": "Profile",
+            "type": "string"
+          },
+          "provider_id": {
+            "pattern": "^[A-Za-z0-9_.:-]{1,80}$",
+            "title": "Provider Id",
+            "type": "string"
+          },
+          "template_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Template Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile",
+          "pack_id",
+          "generator_id",
+          "embedding_id",
+          "provider_id",
+          "git_revision",
+          "git_dirty",
+          "lock_hashes",
+          "template_hash",
+          "binding_hash",
+          "config_hash"
+        ],
+        "title": "RunMetadata",
         "type": "object"
       },
       "StageResponse": {
@@ -565,6 +1273,20 @@
         ],
         "title": "SwitchOrganizationCommand",
         "type": "object"
+      },
+      "Terminal": {
+        "enum": [
+          "answered",
+          "abstained",
+          "authentication_denied",
+          "validation_denied",
+          "retrieval_rejected",
+          "citations_rejected",
+          "runtime_failed",
+          "observer_failed"
+        ],
+        "title": "Terminal",
+        "type": "string"
       },
       "TraceResponse": {
         "properties": {
@@ -655,6 +1377,400 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/audits": {
+      "get": {
+        "operationId": "list_audits_route_api_v1_audits_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditRunList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Audits Route",
+        "tags": [
+          "audits"
+        ]
+      },
+      "post": {
+        "operationId": "start_audit_route_api_v1_audits_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuditRunCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditRunSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Audit Route",
+        "tags": [
+          "audits"
+        ]
+      }
+    },
+    "/api/v1/audits/{run_id}": {
+      "get": {
+        "operationId": "audit_detail_route_api_v1_audits__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditRunDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Audit Detail Route",
+        "tags": [
+          "audits"
+        ]
+      }
+    },
+    "/api/v1/audits/{run_id}/report.json": {
+      "get": {
+        "operationId": "audit_download_route_api_v1_audits__run_id__report_json_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Audit Download Route",
+        "tags": [
+          "audits"
+        ]
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "operationId": "login_route_api_v1_auth_login_post",

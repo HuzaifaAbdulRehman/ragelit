@@ -64,6 +64,43 @@ def test_database_matches_single_migration_head(
 _ = identity_models, tenancy_models
 
 
+def test_audit_migration_round_trip(migration_database_url: str) -> None:
+    config = Config("alembic.ini")
+    config.set_main_option("sqlalchemy.url", migration_database_url)
+    engine = create_engine(migration_database_url)
+    try:
+        for _ in range(2):
+            command.upgrade(config, "head")
+            with engine.connect() as connection:
+                assert (
+                    connection.scalar(
+                        text(
+                            "SELECT relrowsecurity AND relforcerowsecurity "
+                            "FROM pg_class "
+                            "WHERE relname = 'audit_runs'"
+                        )
+                    )
+                    is True
+                )
+                assert (
+                    compare_metadata(
+                        MigrationContext.configure(connection), Base.metadata
+                    )
+                    == []
+                )
+            command.downgrade(config, "0006_intended_document_version")
+            with engine.connect() as connection:
+                assert (
+                    connection.scalar(text("SELECT to_regclass('audit_runs')")) is None
+                )
+                assert (
+                    connection.scalar(text("SELECT to_regclass('documents')"))
+                    is not None
+                )
+    finally:
+        engine.dispose()
+
+
 def test_intended_version_migration_preserves_existing_rows_and_rls(
     migration_database_url: str,
 ) -> None:

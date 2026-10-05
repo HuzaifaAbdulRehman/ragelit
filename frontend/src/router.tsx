@@ -6,6 +6,8 @@ import {
 } from "@tanstack/react-router"
 import { GroupsPage } from "./features/admin/GroupsPage"
 import { PeoplePage } from "./features/admin/PeoplePage"
+import { AuditDetailPage } from "./features/audits/AuditDetailPage"
+import { AuditsPage } from "./features/audits/AuditsPage"
 import { useAuth } from "./features/auth/AuthProvider"
 import { LoginPage } from "./features/auth/LoginPage"
 import { ChatPage } from "./features/chat/ChatPage"
@@ -79,6 +81,17 @@ const chatRoute = createRoute({
   path: "/chat",
   component: ChatPage,
 })
+const auditsRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/audits",
+  component: AuditsPage,
+})
+const auditRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/audits/$auditId",
+  remountDeps: ({ params }) => params.auditId,
+  component: AuditDetailPage,
+})
 const routeTree = rootRoute.addChildren([
   loginRoute,
   shellRoute.addChildren([
@@ -88,6 +101,8 @@ const routeTree = rootRoute.addChildren([
     documentsRoute,
     documentRoute,
     chatRoute,
+    auditsRoute,
+    auditRoute,
   ]),
 ])
 export const router = createRouter({ routeTree })

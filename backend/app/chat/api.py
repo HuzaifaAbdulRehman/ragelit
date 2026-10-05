@@ -1,6 +1,7 @@
+from typing import cast
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from app.api.deps import CurrentAccessScope, DatabaseSession
@@ -8,6 +9,7 @@ from app.chat.deps import Embeddings, Generator
 from app.chat.schemas import AnswerResponse, QueryCommand, TraceResponse
 from app.chat.service import query_documents, query_trace
 from app.core.problems import problem_response
+from app.observability import ObservationSink
 from app.retrieval.deps import ChunkStore
 from app.retrieval.service import AuthorizedRetriever
 
@@ -30,6 +32,7 @@ router = APIRouter(tags=["chat"])
     },
 )
 def chat_query(
+    request: Request,
     command: QueryCommand,
     scope: CurrentAccessScope,
     session: DatabaseSession,
@@ -37,13 +40,21 @@ def chat_query(
     embeddings: Embeddings,
     provider: Generator,
 ) -> JSONResponse:
+    observer = cast(
+        ObservationSink | None, getattr(request.app.state, "observation_sink", None)
+    )
     outcome = query_documents(
         scope,
         command,
         session=session,
         retriever=AuthorizedRetriever(session, store, embeddings),
         provider=provider,
+        observer=observer,
     )
+    if observer is not None:
+        observer.finish(
+            outcome.error_status, outcome.response.status, outcome.error_code
+        )
     if outcome.error_code:
         return problem_response(
             status=outcome.error_status,

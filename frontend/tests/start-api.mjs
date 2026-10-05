@@ -8,7 +8,11 @@ const frontendDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 const backendDir = path.resolve(frontendDir, "../backend")
 const dataDir = mkdtempSync(path.join(tmpdir(), "ragelit-e2e-"))
 const environment = {
-  ...process.env,
+  ...Object.fromEntries(
+    Object.entries(process.env).filter(
+      ([key]) => !key.startsWith("RAGELIT_AUDIT_"),
+    ),
+  ),
   RAGELIT_ENVIRONMENT: "test",
   RAGELIT_SECRET_KEY: "e2e-secret-that-is-at-least-32-bytes",
   RAGELIT_DATABASE_ADMIN_URL:
@@ -17,6 +21,7 @@ const environment = {
     "postgresql+psycopg://ragelit_app:ragelit_app@127.0.0.1:5432/ragelit_e2e",
   RAGELIT_QDRANT_URL: "http://127.0.0.1:6333",
   RAGELIT_COOKIE_SECURE: "false",
+  RAGELIT_ACCESS_TOKEN_MINUTES: "60",
   RAGELIT_QDRANT_COLLECTION: "ragelit_e2e",
   RAGELIT_DATA_DIR: dataDir,
   RAGELIT_LLM_BASE_URL: "http://127.0.0.1:9/v1",

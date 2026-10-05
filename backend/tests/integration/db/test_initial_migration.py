@@ -41,6 +41,7 @@ def test_initial_migration_round_trip(empty_database_url: str) -> None:
     inspector = inspect(engine)
     assert set(inspector.get_table_names()) == {
         "alembic_version",
+        "audit_runs",
         "group_members",
         "groups",
         "memberships",
