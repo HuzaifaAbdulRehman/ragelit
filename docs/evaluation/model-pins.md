@@ -68,3 +68,39 @@ The loader verifies bytes before loading from this owned local folder. Keep the
 folder unchanged during a run; hashes are not signatures or protection against
 a concurrent process rewriting the files. Generation pins, raw query artifacts,
 all original primary measurements, and release gates remain separate work.
+
+## Owned workspace binding
+
+`AuditConfiguration` accepts an `embedding_fingerprint` and an
+`embedding_dimension`. Supply the verified provider through the keyword-only
+`AuditWorkspace(..., embeddings=provider)` argument. The constructor rejects
+missing or mismatched providers and invalid copied settings before database or
+vector access. Custom model identity and geometry become part of the workspace
+checksum; reopening an existing workspace under a changed model rejects rather
+than silently rebuilding it. Default 64-dimensional fixture identities stay
+unchanged. Ingestion and application retrieval use the same provider instance.
+
+`utility_template(generate_utility_corpus())` adapts the full canonical corpus
+to the existing upload, grant, and ingestion path. Its pack is `utility-v1`,
+with no security cases or canary registry. Modified corpus content or labels
+reject before workspace creation. Security-pack preparation refuses utility
+templates, and their numeric answer labels are not disclosure canaries.
+
+Utility seeding still requires ready ingestion. It does not demand a successful
+retrieval answer during setup: poor retrieval must remain available to measure.
+Access-control and injection fixtures keep their existing positive seed probes.
+
+An opt-in integration test exercises three documents through production
+ingestion, retrieval and chat using verified real embeddings. Generation uses
+the named fixture-citing provider, not an LLM. From `backend`, set only the
+test process's `RAGELIT_BENCHMARK_EMBEDDING_ROOT` to the absolute verified asset
+folder and run:
+
+```console
+uv run --frozen pytest tests/integration/evaluation/test_utility_workspace.py -q --tb=short -k pinned_models_flow
+```
+
+Without the explicit asset path this test skips; it never downloads weights.
+This path check is not the full 87-query benchmark, an LLM-quality result, or a
+clean-clone release gate. Real generation, all primary metrics, raw records and
+the final cohort remain required.

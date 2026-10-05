@@ -22,6 +22,7 @@ def test_post_filter_refuses_non_lab_workspace_before_accessing_transport(
     from app.audits.isolation_lab import LabPostFilterStore
 
     config = configuration(tmp_path)
+    workspace = AuditWorkspace(config, generate_fixtures())
     expected = "audit_workspace_not_open"
     if unsafe == "production":
         config = config.model_copy(update={"environment": "production"})
@@ -29,7 +30,7 @@ def test_post_filter_refuses_non_lab_workspace_before_accessing_transport(
     elif unsafe == "tenant":
         config = configuration(tmp_path, vector_strategy="tenant_collections")
         expected = "invalid_audit_strategy"
-    workspace = AuditWorkspace(config, generate_fixtures())
+    workspace.config = config
     with pytest.raises(AuditWorkspaceError, match=expected):
         LabPostFilterStore(workspace, lab=True)
     assert workspace._vector_client is None

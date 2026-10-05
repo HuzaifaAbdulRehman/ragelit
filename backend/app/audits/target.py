@@ -292,6 +292,8 @@ def _evidence_registry(workspace: AuditWorkspace) -> tuple[_Evidence, ...]:
 
 
 def prepare_pack(workspace: AuditWorkspace, run_id: UUID) -> PreparedPack:
+    if workspace.template.pack_id == "utility-v1":
+        raise AuditWorkspaceError("audit_fixture_pack_required")
     workspace.validate_owned()
     if any(
         instance.state == "incomplete"

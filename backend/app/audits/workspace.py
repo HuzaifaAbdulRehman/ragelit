@@ -37,6 +37,7 @@ from app.db.base import Base
 from app.db.session import build_session_factory
 from app.documents.models import DocumentVersion
 from app.main import create_app
+from app.retrieval.embeddings import EmbeddingProvider
 from app.retrieval.store import QdrantChunkStore
 
 _NAME = re.compile(r"ragelit_audit_[a-z0-9_]{1,32}\Z")
@@ -103,9 +104,13 @@ class AuditConfiguration(AuditModel):
     application_password: SecretStr = Field(repr=False, min_length=16)
     fixture_password: SecretStr = Field(repr=False, min_length=16)
     qdrant_timeout_seconds: int = Field(default=30, ge=1, le=30)
+    embedding_fingerprint: Checksum | None = None
+    embedding_dimension: int = Field(default=64, strict=True, ge=1, le=4096)
 
     @model_validator(mode="after")
     def guard_targets(self) -> Self:
+        if self.embedding_fingerprint is None and self.embedding_dimension != 64:
+            raise AuditWorkspaceError("invalid_audit_embedding_configuration")
         database = make_url(self.database_admin_url.get_secret_value())
         if (
             database.drivername != "postgresql+psycopg"
@@ -177,6 +182,9 @@ class AuditConfiguration(AuditModel):
         }
         if self.vector_strategy != "shared_pre_filter":
             identity["vector_strategy"] = self.vector_strategy
+        if self.embedding_fingerprint is not None:
+            identity["embedding_fingerprint"] = self.embedding_fingerprint
+            identity["embedding_dimension"] = self.embedding_dimension
         return _hash(identity)
 
     @property
@@ -242,9 +250,28 @@ class AuditWorkspace:
     settings: Settings
     client: TestClient
 
-    def __init__(self, config: AuditConfiguration, template: FixtureTemplate) -> None:
+    def __init__(
+        self,
+        config: AuditConfiguration,
+        template: FixtureTemplate,
+        *,
+        embeddings: EmbeddingProvider | None = None,
+    ) -> None:
+        config = AuditConfiguration.model_validate(config.model_dump())
+        if (
+            (embeddings is None) != (config.embedding_fingerprint is None)
+            or embeddings is not None
+            and (
+                getattr(embeddings, "fingerprint", None) != config.embedding_fingerprint
+                or type(embeddings.dimension) is not int
+                or embeddings.dimension != config.embedding_dimension
+            )
+        ):
+            raise AuditWorkspaceError("audit_embedding_mismatch")
         self.config, self.template = config, template
-        self.embeddings = FixtureEmbeddings()
+        self.embeddings: EmbeddingProvider = (
+            embeddings if embeddings is not None else FixtureEmbeddings()
+        )
         self._server_engine: Engine | None = None
         self._lock: Connection | None = None
         self._admin_engine: Engine | None = None
@@ -272,11 +299,11 @@ class AuditWorkspace:
             return TenantCollectionStore(
                 self._vector_client,
                 self.config,
-                dimension=FixtureEmbeddings.dimension,
+                dimension=self.embeddings.dimension,
                 organizations=lambda: tuple(self.bindings.organizations.values()),
             )
         return QdrantChunkStore(
-            self._vector_client, self.config.name, dimension=FixtureEmbeddings.dimension
+            self._vector_client, self.config.name, dimension=self.embeddings.dimension
         )
 
     def _namespace_names(self) -> set[str]:
@@ -359,7 +386,7 @@ class AuditWorkspace:
             )
             app.state.chunk_store, app.state.embeddings = (
                 self.store,
-                FixtureEmbeddings(),
+                self.embeddings,
             )
             self._client = TestClient(app)
             self.client = self._client.__enter__()

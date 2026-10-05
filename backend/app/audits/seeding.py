@@ -247,12 +247,13 @@ def seed_workspace(
                     "documents": workspace.bindings.documents | {document.id: binding}
                 }
             )
-        verify_probe(
-            workspace,
-            actor_headers(document.control_actor_id),
-            document.question,
-            binding,
-        )
+        if template.pack_id != "utility-v1":
+            verify_probe(
+                workspace,
+                actor_headers(document.control_actor_id),
+                document.question,
+                binding,
+            )
     with workspace.mutation():
         workspace.bindings = workspace.bindings.model_copy(update={"seeded": True})
     return workspace.bindings
