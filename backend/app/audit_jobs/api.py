@@ -2,6 +2,7 @@ from typing import Annotated, Any, NoReturn
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Response
+from fastapi.responses import HTMLResponse
 
 from app.api.deps import DatabaseSession, require_action
 from app.audit_jobs.schemas import (
@@ -18,6 +19,7 @@ from app.audit_jobs.service import (
     list_audits,
     summarize_run,
 )
+from app.audits.html import CONTENT_SECURITY_POLICY, render_html
 from app.audits.reports import AuditReport
 from app.core.problems import ProblemDetail, ProblemException
 from app.tenancy.policy import Action
@@ -106,5 +108,26 @@ def audit_download_route(
             "Content-Disposition": f'attachment; filename="{run.report_id}.json"',
             "Cache-Control": "no-store",
             "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
+@router.get("/{run_id}/report.html", responses=RESPONSES, response_class=HTMLResponse)
+def audit_html_download_route(
+    run_id: UUID, principal: AuditRunner, session: DatabaseSession
+) -> Response:
+    try:
+        run = get_audit(run_id, principal, session=session)
+        report = AuditReport.model_validate_json(download_report(run))
+    except AuditJobError as error:
+        _raise_error(error)
+    return Response(
+        render_html(report),
+        media_type="text/html",
+        headers={
+            "Content-Disposition": f'attachment; filename="{run.report_id}.html"',
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": CONTENT_SECURITY_POLICY,
         },
     )

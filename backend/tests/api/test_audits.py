@@ -39,6 +39,10 @@ def test_every_audit_route_requires_current_privileged_role(
         f"/api/v1/audits/{run_id}/report.json", headers=headers
     )
     assert download.status_code == (409 if allowed else 403)
+    html_download = tenant_client.get(
+        f"/api/v1/audits/{run_id}/report.html", headers=headers
+    )
+    assert html_download.status_code == (409 if allowed else 403)
     if allowed:
         assert created.json()["state"] == "queued"
         assert created.json()["outcome"] == "unknown"
@@ -90,7 +94,7 @@ def test_foreign_run_is_not_found(
     run_id = tenant_client.post("/api/v1/audits", headers=headers_a, json={}).json()[
         "id"
     ]
-    for suffix in ("", "/report.json"):
+    for suffix in ("", "/report.json", "/report.html"):
         response = tenant_client.get(
             f"/api/v1/audits/{run_id}{suffix}", headers=headers_b
         )
@@ -115,6 +119,7 @@ def test_existing_token_loses_audit_access_after_role_change(
         "/api/v1/audits",
         f"/api/v1/audits/{run_id}",
         f"/api/v1/audits/{run_id}/report.json",
+        f"/api/v1/audits/{run_id}/report.html",
     ):
         assert tenant_client.get(path, headers=headers).status_code == 403
     assert (
@@ -140,6 +145,7 @@ def test_deactivated_membership_cannot_read_or_start(
         "/api/v1/audits",
         f"/api/v1/audits/{run_id}",
         f"/api/v1/audits/{run_id}/report.json",
+        f"/api/v1/audits/{run_id}/report.html",
     ):
         assert tenant_client.get(path, headers=headers).status_code == 401
     assert (
@@ -188,12 +194,25 @@ def test_download_preserves_utf8_bytes(
         assert response.content == content
         assert hashlib.sha256(response.content).hexdigest() == digest
         assert response.headers["content-disposition"].endswith(f'{report_id}.json"')
+        html = tenant_client.get(
+            f"/api/v1/audits/{run_id}/report.html", headers=actor_headers
+        )
+        assert html.status_code == 200
+        assert html.headers["content-type"] == "text/html; charset=utf-8"
+        assert html.headers["content-disposition"].endswith(f'{report_id}.html"')
+        assert html.headers["cache-control"] == "no-store"
+        assert html.headers["x-content-type-options"] == "nosniff"
+        assert "default-src 'none'" in html.headers["content-security-policy"]
+        assert "Outcome: inconclusive" in html.text
+        assert "Runtime failed: false" in html.text
+        assert "Synthetic fixtures and deterministic providers only" in html.text
+        assert "AUDITCANARY" not in html.text and "Bearer " not in html.text
     with Session(tenant_database_engines[0]) as session:
         run = session.get(AuditRun, run_id)
         assert run is not None
         run.report_sha256 = "0" * 64
         session.commit()
-    for suffix in ("", "/report.json"):
+    for suffix in ("", "/report.json", "/report.html"):
         response = tenant_client.get(
             f"/api/v1/audits/{run_id}{suffix}", headers=headers
         )

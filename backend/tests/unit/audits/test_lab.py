@@ -51,6 +51,7 @@ def test_lab_module_is_absent_from_the_normal_web_dependency_graph() -> None:
         "app.audits.reports",
         "app.audits.contracts",
         "app.audits.scoring",
+        "app.audits.html",
     }
     assert "app.workers.audit" not in modules
     assert "app.audit_jobs.execution" not in modules
@@ -80,7 +81,7 @@ def test_fresh_web_import_does_not_load_privileged_engine() -> None:
             "-c",
             "import app.main, app.export_openapi, sys; "
             "allowed = {'app.audits.reports', 'app.audits.contracts', "
-            "'app.audits.scoring'}; "
+            "'app.audits.scoring', 'app.audits.html'}; "
             "assert not {m for m in sys.modules "
             "if m.startswith('app.audits.')} - allowed; "
             "assert 'app.audit_jobs.execution' not in sys.modules",

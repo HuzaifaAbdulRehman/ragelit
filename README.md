@@ -7,8 +7,9 @@ answers or their own query traces.
 
 Owners, admins, and auditors can queue a synthetic access-control audit and
 inspect its saved results in Audits. The separate operator worker runs invented
-fixtures only. Retrieval benchmarks, indirect-injection tests, HTML exports, and
-live streaming remain planned. This is a development build, not a production
+fixtures only. Saved reports download as original JSON or a self-contained HTML
+view. Retrieval benchmarks, indirect-injection tests and live streaming remain
+planned. This is a development build, not a production
 deployment.
 
 ## Run locally
@@ -216,6 +217,11 @@ Execution is capped at 1800 seconds. Saved JSON downloads preserve the validated
 artifact bytes and SHA-256; case evidence distinguishes candidates from delivered
 output and observed stages from stages that were never reached.
 
+Choose Download HTML on a saved audit to open its evidence offline. The export
+preserves the JSON outcome, coverage limits, first exposure and redacted stage
+observations. It includes no scripts or remote assets. HTML is a readable view,
+not a new audit or a replacement for the original JSON checksum.
+
 After sleep or an interrupted lease, new runs stay blocked for that organization.
 First stop and confirm both the worker and its child have stopped. Then recover
 the exact request ID with the same job database URL and organization UUID:
@@ -281,5 +287,5 @@ refused. Set `RAGELIT_AUDIT_EXPORT_DIRECTORY` to choose another fresh destinatio
 Keep the laptop awake during service-backed checks; sleep counts against subprocess
 timeouts. The CLI also remains available separately from the portal.
 
-Billing, invitations, indirect-injection checks, HTML exports, streaming, and
+Billing, invitations, indirect-injection checks, streaming, and
 benchmark comparisons remain separate milestones.
