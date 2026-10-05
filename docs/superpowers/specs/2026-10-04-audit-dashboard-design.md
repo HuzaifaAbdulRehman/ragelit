@@ -1,7 +1,8 @@
 # M4 audit dashboard design
 
-Status: design and task plan approved on 4 October 2026. Native implementation
-is in progress; final verification is still pending.
+Status: design and task plan approved on 4 October 2026. Implementation and
+verification completed on 5 October. The real journey passed on Windows
+and Linux; see the [verification record](../../verification/2026-10-04-audit-dashboard.md).
 
 This extends the [engine-first design](2026-10-02-audit-engine-design.md).
 The engine is committed at `772b6d1`; its
