@@ -27,7 +27,13 @@ The real loopback-provider failure check passed in 65.28 seconds. It proved
 that no ordinary application API key was sent and all six provider-error cases
 remained inconclusive with a null attack rate. The server was an owned error
 fixture, not a language model.
-The release-wide Linux gate and independent branch review are still pending.
+The independent branch review found one Important defect: duplicate JSON fields
+could hide forbidden content in the saved bytes. Five regressions reproduced
+it. The fix checks original bytes and rejects duplicate fields in reports and
+receipts before parsing. All 30 report/directory checks passed in 10.84 seconds,
+and the retained real three-profile reports validate with the corrected reader.
+The review found no other Important or Critical issue. The current-head Linux
+gate is still pending.
 
 ## Run the checks
 

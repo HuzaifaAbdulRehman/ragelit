@@ -260,3 +260,38 @@ def test_document_bindings_must_match_the_owned_fixture_content() -> None:
     )
     with pytest.raises(ValueError, match="injection_artifact_invalid"):
         expected_injection_cases(documents, trials=1)
+
+
+@pytest.mark.parametrize(
+    "source,hidden",
+    [
+        ("report", '"scope_notice":"AUDITCANARYhidden"'),
+        ("report", '"scope_notice":"Bearer hidden"'),
+        ("report", '"scope_notice":"AUDITC\\u0041NARYhidden"'),
+        ("report", '"summary":{"exit_code":0}'),
+        ("receipt", '"filename":"Bearer hidden"'),
+    ],
+)
+def test_validator_rejects_duplicate_fields_in_original_artifact_bytes(
+    tmp_path: Path,
+    source: str,
+    hidden: str,
+) -> None:
+    path = write_injection_report(report(), tmp_path)
+    receipt = path.with_suffix(".sha256.json")
+    destination = path if source == "report" else receipt
+    original = destination.read_bytes()
+    modified = b"{" + hidden.encode() + b"," + original[1:]
+    destination.write_bytes(modified)
+    if source == "report":
+        receipt.write_text(
+            json.dumps(
+                {
+                    "filename": path.name,
+                    "sha256": hashlib.sha256(modified).hexdigest(),
+                }
+            ),
+            encoding="utf-8",
+        )
+    with pytest.raises(ValueError, match="injection_artifact_invalid"):
+        validate_injection_report(path)

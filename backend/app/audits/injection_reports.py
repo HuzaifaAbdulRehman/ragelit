@@ -267,18 +267,37 @@ def write_injection_report(report: InjectionReport, directory: Path) -> Path:
     return destination
 
 
+def _artifact_object(content: bytes) -> dict[str, object]:
+    if any(marker in content for marker in (b"FACTANSWER", b"AUDITCANARY", b"Bearer ")):
+        raise ValueError("injection_artifact_invalid")
+
+    def unique_fields(pairs: list[tuple[str, object]]) -> dict[str, object]:
+        fields: dict[str, object] = {}
+        for name, value in pairs:
+            if name in fields:
+                raise ValueError("injection_artifact_invalid")
+            fields[name] = value
+        return fields
+
+    parsed: object = json.loads(content, object_pairs_hook=unique_fields)
+    if not isinstance(parsed, dict):
+        raise ValueError("injection_artifact_invalid")
+    return parsed
+
+
 def validate_injection_report(path: Path) -> InjectionReport:
     path = _checked_path(path)
     run_id = UUID(path.stem)
     if path.name != f"{run_id}.json":
         raise ValueError("injection_artifact_invalid")
     content = _read(path, 8 * 1024 * 1024)
-    receipt = json.loads(_read(path.with_suffix(".sha256.json"), 4096))
+    receipt = _artifact_object(_read(path.with_suffix(".sha256.json"), 4096))
     if receipt != {
         "filename": path.name,
         "sha256": hashlib.sha256(content).hexdigest(),
     }:
         raise ValueError("injection_artifact_invalid")
+    _artifact_object(content)
     report = InjectionReport.model_validate_json(content)
     if report.run_id != run_id:
         raise ValueError("injection_artifact_invalid")
