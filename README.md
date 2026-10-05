@@ -172,6 +172,11 @@ check access boundaries and UI behavior, not relevance or real-model answer
 quality. Fixtures use a separate temporary upload directory and require the
 dedicated local test targets. These tests do not call a paid model.
 
+Both scripts also validate separate access-control, injection, and isolation
+report exports before checking the frontend. Each run needs fresh destinations;
+existing export files and directories are preserved. The Windows script runs
+its native export regression tests before the backend suites.
+
 On 2 October 2026, `powershell -NoProfile -File scripts/verify.ps1` exited 0
 on Windows with local PostgreSQL 16 and Qdrant 1.15.4: 65 unit checks,
 156 integration/API checks, and 41 browser tests. Static checks,
