@@ -50,10 +50,38 @@ organizations. Correlated queries and repeated trials need a declared sampling
 unit before applying it. Small synthetic datasets can give misleadingly narrow
 intervals. Record the Python version with experiment provenance.
 
+## Fixed utility corpus
+
+`natural-utility-v1` uses seed `20261005`, three invented organizations, four
+groups per organization and 21 actors. Its 87 short policy documents have 87
+authored questions and document-level relevance labels: 60 organization-wide,
+24 group-restricted and three direct-user records. Depending on the actor,
+20 to 23 documents are eligible, so returning ten results cannot retrieve the
+entire permitted collection.
+
+The generator rejects incomplete inventories, foreign grants, forbidden labels
+and unsupported answer facts. Owner/admin/auditor roles do not supply document
+grants. This is declared dataset eligibility, not a replacement for production
+authorization. Tests check corpus integrity; no model quality is established.
+The short templated records are not a blind holdout or representative company
+dataset. Existing access/injection fixtures remain separate security regressions.
+
+The default corpus manifest has 55,094 bytes and SHA-256
+`f3f2b17b7d40ec7f6ce26e1779941241bc1ce5711f5152d6b461d26bb7fe329a`.
+It replaces text, questions and expected answers with hashes while retaining
+effective identities, grants and labels. Hashes provide provenance, not
+anonymization or proof that an operator executed a benchmark.
+
+Reproduce that checksum from `backend` without downloading a model:
+
+```console
+uv run --frozen python -c "from app.evaluation.dataset import generate_utility_corpus; print(generate_utility_corpus().checksum)"
+```
+
 ## Remaining measurements
 
-These helpers do not establish dataset coverage, label correctness or genuine
-model quality. The release still requires pinned data and models, per-query
+These helpers and corpus checks do not establish genuine model quality.
+The release still requires pinned effective models and configuration, per-query
 raw artifacts, unauthorized retrieval/context/output rates, injection success,
 citation correctness, index time, storage, collection count and revocation
 delay. Deterministic audit fixtures remain security regressions, not a substitute
