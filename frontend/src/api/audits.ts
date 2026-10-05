@@ -36,4 +36,10 @@ export const auditsApi = {
       { signal },
       token,
     ),
+  downloadHtml: (token: string, id: string, signal: AbortSignal) =>
+    requestBlob(
+      `/api/v1/audits/${encodeURIComponent(id)}/report.html`,
+      { signal },
+      token,
+    ),
 }

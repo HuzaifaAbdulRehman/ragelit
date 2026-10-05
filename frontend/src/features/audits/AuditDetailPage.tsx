@@ -45,19 +45,19 @@ function AuditDetail() {
     refetchIntervalInBackground: false,
   })
   const download = useMutation({
-    mutationFn: () =>
-      auditsApi.download(
+    mutationFn: (format: "json" | "html") =>
+      (format === "html" ? auditsApi.downloadHtml : auditsApi.download)(
         scope.token,
         auditId,
         AbortSignal.any([scope.signal, downloadController.signal]),
       ),
-    onSuccess: (blob) => {
+    onSuccess: (blob, format) => {
       if (scope.signal.aborted || downloadController.signal.aborted) return
       const url = URL.createObjectURL(blob)
       objectUrl.current = url
       const link = document.createElement("a")
       link.href = url
-      link.download = `${run.data?.report_id ?? auditId}.json`
+      link.download = `${run.data?.report_id ?? auditId}.${format}`
       link.click()
       setTimeout(() => {
         URL.revokeObjectURL(url)
@@ -129,13 +129,22 @@ function AuditDetail() {
             </p>
           )}
           {run.data.report_available && (
-            <button
-              type="button"
-              disabled={download.isPending}
-              onClick={() => download.mutate()}
-            >
-              {download.isPending ? "Downloading..." : "Download JSON"}
-            </button>
+            <>
+              <button
+                type="button"
+                disabled={download.isPending}
+                onClick={() => download.mutate("json")}
+              >
+                {download.isPending ? "Downloading..." : "Download JSON"}
+              </button>
+              <button
+                type="button"
+                disabled={download.isPending}
+                onClick={() => download.mutate("html")}
+              >
+                {download.isPending ? "Downloading..." : "Download HTML"}
+              </button>
+            </>
           )}
           <RequestError error={download.error} />
           {run.data.report ? (
