@@ -12,6 +12,9 @@ view. A separate CLI tests instructions hidden in synthetic documents. Retrieval
 benchmarks and live streaming remain planned. This is a development build, not
 a production deployment.
 
+See the [security control matrix](docs/security/control-matrix.md) for enforcement
+code, regression coverage and the release checks still pending.
+
 ## Run locally
 
 Install Docker Desktop with Compose, Python 3.12 or 3.13,
