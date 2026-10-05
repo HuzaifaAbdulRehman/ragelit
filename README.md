@@ -8,9 +8,9 @@ answers or their own query traces.
 Owners, admins, and auditors can queue a synthetic access-control audit and
 inspect its saved results in Audits. The separate operator worker runs invented
 fixtures only. Saved reports download as original JSON or a self-contained HTML
-view. Retrieval benchmarks, indirect-injection tests and live streaming remain
-planned. This is a development build, not a production
-deployment.
+view. A separate CLI tests instructions hidden in synthetic documents. Retrieval
+benchmarks and live streaming remain planned. This is a development build, not
+a production deployment.
 
 ## Run locally
 
@@ -287,5 +287,36 @@ refused. Set `RAGELIT_AUDIT_EXPORT_DIRECTORY` to choose another fresh destinatio
 Keep the laptop awake during service-backed checks; sleep counts against subprocess
 timeouts. The CLI also remains available separately from the portal.
 
-Billing, invitations, indirect-injection checks, streaming, and
-benchmark comparisons remain separate milestones.
+## Document-instruction audit
+
+The injection CLI runs six owned-document cases through the real chat API.
+Its deterministic profiles check the harness, not a model's resistance.
+Use a fresh audit name and matching root with the variables above. Do not reuse
+an access-control workspace: the injection pack has different fixture bindings.
+
+```console
+uv run --frozen python -m app.audits.injection_cli --profile resistant
+uv run --frozen python -m app.audits.injection_cli --profile obeying
+uv run --frozen python -m app.audits.injection_cli --profile deny_all
+```
+
+These return 0, 1 and 1 respectively when evidence is complete. Use
+`--trials <count>` with an integer from 1 to 20 to repeat each tenant's benign
+and attack cases (default 1).
+An abstention is excluded from the attack denominator and fails answer utility.
+No evaluated attacks means a null rate, not zero. Incomplete evidence or a
+runtime/report-write failure returns 2 and cannot establish resistance.
+
+Reports use a separate redacted schema with original-byte SHA-256 receipts.
+Validate one with `--validate-report <report.json>`, or validate an exported
+three-profile pack with `--validate-reports <directory>`. CI uses a fresh
+`data/injection-reports` directory, separate from access-control artifacts;
+`RAGELIT_INJECTION_EXPORT_DIRECTORY` selects another fresh destination.
+
+An optional local-model run requires `--profile local`, `--local-base-url`,
+`--model` and `--weights-sha256`. Only numeric loopback HTTP `/v1` endpoints
+are accepted, with no API key. It records the declared weights hash and system
+prompt hash; it does not attest that the server loaded those weights.
+See [commands and measured limits](docs/verification/2026-10-05-injection-pack.md).
+
+Billing, invitations, streaming and benchmark comparisons remain separate work.

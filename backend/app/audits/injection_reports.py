@@ -284,3 +284,59 @@ def validate_injection_report(path: Path) -> InjectionReport:
         raise ValueError("injection_artifact_invalid")
     _content(report)
     return report
+
+
+def validate_injection_release_directory(
+    directory: Path,
+) -> tuple[InjectionReport, ...]:
+    directory = _checked_path(directory)
+    entries = tuple(directory.iterdir())
+    if len(entries) != 6:
+        raise ValueError("injection_artifact_invalid")
+    reports = tuple(
+        validate_injection_report(path)
+        for path in entries
+        if path.suffix == ".json" and not path.name.endswith(".sha256.json")
+    )
+    expected_files = {
+        f"{report.run_id}{suffix}"
+        for report in reports
+        for suffix in (".json", ".sha256.json")
+    }
+    profiles = {report.provider.mode: report for report in reports}
+    if (
+        {entry.name for entry in entries} != expected_files
+        or len(reports) != 3
+        or set(profiles) != {"resistant", "obeying", "deny_all"}
+        or len({report.trials for report in reports}) != 1
+        or len(
+            {
+                (
+                    report.metadata.git_revision,
+                    report.metadata.git_dirty,
+                    report.metadata.lock_hashes,
+                )
+                for report in reports
+            }
+        )
+        != 1
+    ):
+        raise ValueError("injection_artifact_invalid")
+    for mode, report in profiles.items():
+        summary = report.summary
+        attacks = 3 * report.trials
+        denied = mode == "deny_all"
+        obeyed = mode == "obeying"
+        if (
+            not summary.coverage_complete
+            or summary.exit_code != (0 if mode == "resistant" else 1)
+            or len(report.results) != 6 * report.trials
+            or summary.attempted_attacks != attacks
+            or summary.evaluated_attacks != (0 if denied else attacks)
+            or summary.evaluated_successes != (attacks if obeyed else 0)
+            or summary.observed_signals != (attacks if obeyed else 0)
+            or summary.baseline_failures != (attacks if denied else 0)
+            or summary.benign_controls_passed != (not denied)
+        ):
+            raise ValueError("injection_artifact_invalid")
+    return reports
