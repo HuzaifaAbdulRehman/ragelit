@@ -319,4 +319,29 @@ are accepted, with no API key. It records the declared weights hash and system
 prompt hash; it does not attest that the server loaded those weights.
 See [commands and measured limits](docs/verification/2026-10-05-injection-pack.md).
 
-Billing, invitations, streaming and benchmark comparisons remain separate work.
+## Storage isolation comparison
+
+The comparison CLI runs the same 51 access-control cases against shared
+pre-filtering, owned tenant collections and a lab-only post-filter baseline.
+Tenant routing changes actual ingestion and collection lifecycle, not just a
+payload flag. It does not change the portal's default storage.
+
+Use the audit variables above with a fresh name and matching root before each
+strategy:
+
+```console
+uv run --frozen python -m app.audits.isolation_cli --strategy shared_pre_filter
+uv run --frozen python -m app.audits.isolation_cli --strategy tenant_collections
+uv run --frozen python -m app.audits.isolation_cli --strategy lab_post_filter --lab
+```
+
+Shared and tenant runs should return 0; the explicit lab baseline should return
+1 with raw retrieval exposure. Runtime failures or incomplete evidence return 2.
+Reports and receipts use a separate schema and fresh export directory. Validate
+one report with `--validate-report <report.json>`, or all three with
+`--validate-reports <directory>`. CI exports to `data/isolation-reports`;
+`RAGELIT_ISOLATION_EXPORT_DIRECTORY` selects another fresh destination.
+These runs use deterministic providers and are not quality benchmarks.
+See [recorded checks and limits](docs/verification/2026-10-05-isolation-comparison.md).
+
+Billing, invitations, streaming and retrieval benchmarks remain separate work.
