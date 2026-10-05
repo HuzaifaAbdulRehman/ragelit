@@ -81,7 +81,8 @@ uv run --frozen python -c "from app.evaluation.dataset import generate_utility_c
 ## Remaining measurements
 
 These helpers and corpus checks do not establish genuine model quality.
-The release still requires pinned effective models and configuration, per-query
+[Local embedding pins](model-pins.md) now define verified offline embedding
+assets. The release still requires effective generation pins and configuration, per-query
 raw artifacts, unauthorized retrieval/context/output rates, injection success,
 citation correctness, index time, storage, collection count and revocation
 delay. Deterministic audit fixtures remain security regressions, not a substitute
