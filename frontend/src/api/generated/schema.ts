@@ -1234,43 +1234,43 @@ export interface operations {
                     "text/html": string;
                 };
             };
-            /** @description Unauthorized */
+            /** @description Request failed. */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/html": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description Forbidden */
+            /** @description Request failed. */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/html": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description Not Found */
+            /** @description Request failed. */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/html": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description Conflict */
+            /** @description Request failed. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/html": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description Unprocessable Content */
+            /** @description Request failed. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1279,13 +1279,13 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description Service Unavailable */
+            /** @description Request failed. */
             503: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/html": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };

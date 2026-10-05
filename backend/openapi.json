@@ -1708,43 +1708,43 @@
           },
           "401": {
             "content": {
-              "text/html": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             },
-            "description": "Unauthorized"
+            "description": "Request failed."
           },
           "403": {
             "content": {
-              "text/html": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             },
-            "description": "Forbidden"
+            "description": "Request failed."
           },
           "404": {
             "content": {
-              "text/html": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             },
-            "description": "Not Found"
+            "description": "Request failed."
           },
           "409": {
             "content": {
-              "text/html": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             },
-            "description": "Conflict"
+            "description": "Request failed."
           },
           "422": {
             "content": {
@@ -1754,17 +1754,17 @@
                 }
               }
             },
-            "description": "Unprocessable Content"
+            "description": "Request failed."
           },
           "503": {
             "content": {
-              "text/html": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             },
-            "description": "Service Unavailable"
+            "description": "Request failed."
           }
         },
         "security": [

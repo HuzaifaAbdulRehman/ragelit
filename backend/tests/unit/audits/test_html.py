@@ -37,6 +37,24 @@ def test_html_download_declares_its_mime_type_in_the_api_contract() -> None:
     assert response["content"]["text/html"]["schema"] == {"type": "string"}
 
 
+def test_html_download_errors_remain_problem_json_in_the_api_contract() -> None:
+    from fastapi import FastAPI
+
+    from app.audit_jobs.api import router
+
+    app = FastAPI()
+    app.include_router(router)
+    responses = app.openapi()["paths"]["/audits/{run_id}/report.html"]["get"][
+        "responses"
+    ]
+    for status in (401, 403, 404, 409, 422, 503):
+        assert responses[str(status)]["content"] == {
+            "application/problem+json": {
+                "schema": {"$ref": "#/components/schemas/ProblemDetail"}
+            }
+        }
+
+
 @pytest.mark.parametrize("state", ["pass", "fail", "inconclusive"])
 def test_html_preserves_outcome_and_stage_evidence(state: str) -> None:
     from app.audits.html import render_html

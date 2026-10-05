@@ -32,6 +32,17 @@ PageOffset = Annotated[int, Query(ge=0)]
 RESPONSES: dict[int | str, dict[str, Any]] = {
     status: {"model": ProblemDetail} for status in (401, 403, 404, 409, 503)
 }
+HTML_RESPONSES: dict[int | str, dict[str, Any]] = {
+    status: {
+        "description": "Request failed.",
+        "content": {
+            "application/problem+json": {
+                "schema": {"$ref": "#/components/schemas/ProblemDetail"}
+            }
+        },
+    }
+    for status in (401, 403, 404, 409, 422, 503)
+}
 
 
 def _raise_error(error: AuditJobError) -> NoReturn:
@@ -112,7 +123,9 @@ def audit_download_route(
     )
 
 
-@router.get("/{run_id}/report.html", responses=RESPONSES, response_class=HTMLResponse)
+@router.get(
+    "/{run_id}/report.html", responses=HTML_RESPONSES, response_class=HTMLResponse
+)
 def audit_html_download_route(
     run_id: UUID, principal: AuditRunner, session: DatabaseSession
 ) -> Response:
