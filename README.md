@@ -353,3 +353,5 @@ These runs use deterministic providers and are not quality benchmarks.
 See [recorded checks and limits](docs/verification/2026-10-05-isolation-comparison.md).
 
 Billing, invitations, streaming and retrieval benchmarks remain separate work.
+The benchmark [metric definitions](docs/evaluation/metric-definitions.md)
+describe the tested calculation helpers and the measurements still required.
