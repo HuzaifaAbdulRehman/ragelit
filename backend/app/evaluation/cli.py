@@ -513,11 +513,20 @@ def _run_injection(
 
 
 def _offline(options: argparse.Namespace) -> tuple[int, dict[str, Any]]:
+    from app.evaluation.access_reports import validate_access_benchmark
     from app.evaluation.cost_reports import validate_cost_report
     from app.evaluation.reports import compare_utility_reports, validate_utility_report
     from app.evaluation.security_reports import validate_injection_benchmark
 
     try:
+        if options.validate_access_benchmark is not None:
+            access = validate_access_benchmark(options.validate_access_benchmark)
+            return 0, {
+                "code": "access_benchmark_artifact_valid",
+                "exit_code": 0,
+                "run_exit_code": access.exit_code,
+                "coverage_complete": access.coverage_complete,
+            }
         if options.validate_injection_benchmark is not None:
             security = validate_injection_benchmark(
                 options.validate_injection_benchmark
@@ -583,6 +592,7 @@ def main(argv: list[str] | None = None) -> int:
     offline.add_argument("--validate-report", type=Path)
     offline.add_argument("--validate-cost-report", type=Path)
     offline.add_argument("--validate-injection-benchmark", type=Path)
+    offline.add_argument("--validate-access-benchmark", type=Path)
     offline.add_argument("--compare-reports", type=Path, nargs=2)
     try:
         options = parser.parse_args(argv)
@@ -590,6 +600,7 @@ def main(argv: list[str] | None = None) -> int:
             options.validate_report is not None
             or options.validate_cost_report is not None
             or options.validate_injection_benchmark is not None
+            or options.validate_access_benchmark is not None
             or options.compare_reports is not None
         )
         if validating:

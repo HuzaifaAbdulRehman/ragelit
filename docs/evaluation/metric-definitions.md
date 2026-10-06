@@ -194,8 +194,27 @@ reconstructs all 51 cases from the pinned template and recorded inventory. It
 checks document hashes, chunk IDs and actor identities, including isolated
 revocations and superseded versions. Forbidden chunks and canary labels are
 derived from those bindings rather than trusted from a submitted case. This is
-offline inventory validation, not a measured security result; its benchmark
-report and capture driver remain pending.
+offline inventory validation, not a measured security result.
+
+The [access-control benchmark artifact](../../backend/app/evaluation/access_reports.py)
+stores raw observations alongside the owned inventory and configured generation
+profile for each case. Replay rebuilds case outcomes and the five exposure rates.
+The three controlled citation cases remain fixture-generated even when ordinary
+queries declare a local model.
+
+Each provisional artifact has a new filename while cohort_id retains the prepared
+lifecycle-instance namespace. It always has gate 2. A complete positive-control
+failure or observed forbidden exposure gives gate 1; missing coverage or runtime
+failure gives gate 2.
+
+Validate the original artifact offline:
+
+    uv run --frozen python -m app.evaluation.cli --validate-access-benchmark D:/replace/with/report.json
+
+Exit 0 proves integrity and replay; run_exit_code and coverage_complete describe
+the recorded run separately. Current checks use constructed fixture observations,
+not actual embeddings or a local LLM. The owned access capture driver and full
+measurements remain pending.
 
 The [injection benchmark artifact](../../backend/app/evaluation/security_reports.py)
 binds canonical injection-v1 cases and document hashes to benchmark provenance,
@@ -228,8 +247,8 @@ run_exit_code is 0 for a complete passing injection pack, 1 for a complete
 failing pack, or 2 for incomplete/provisional evidence. That pack gate does
 not complete the utility, access-control or release benchmark. Current unit
 and native CLI checks use constructed fixture observations. The owned capture
-driver is implemented, but its service-backed injection check, the access-control
-envelope and full real-model runs remain pending. Runner/CLI tests use local
+driver is implemented, but its service-backed injection check, access-control
+capture and full real-model runs remain pending. Runner/CLI tests use local
 doubles and constructed fixture observations.
 
 ## Remaining measurements
