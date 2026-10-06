@@ -374,6 +374,144 @@ def _run(
     }
 
 
+def _run_injection(
+    options: argparse.Namespace, generation: GenerationRecord
+) -> tuple[int, dict[str, Any]]:
+    from app.audits.injection_fixtures import (
+        generate_injection_fixtures,
+        prepare_injection_pack,
+    )
+    from app.audits.workspace import AuditConfiguration, AuditWorkspace, DocumentBinding
+    from app.evaluation.models import PinnedEmbeddingProvider, load_embedding_pins
+    from app.evaluation.security_reports import (
+        InjectionBenchmarkReport,
+        build_injection_benchmark,
+        write_injection_benchmark,
+    )
+    from app.evaluation.security_runner import (
+        InjectionExecution,
+        execute_injection_benchmark,
+    )
+
+    try:
+        config = AuditConfiguration.model_validate(
+            _configuration().model_dump()
+            | {
+                "embedding_fingerprint": load_embedding_pins().fingerprint,
+                "embedding_dimension": 384,
+                "vector_strategy": "tenant_collections"
+                if options.strategy == "tenant_collections"
+                else "shared_pre_filter",
+            }
+        )
+    except Exception:
+        return _diagnostic("injection_benchmark_invalid_configuration", 2)
+    try:
+        embeddings = PinnedEmbeddingProvider(options.embedding_root)
+    except (Exception, KeyboardInterrupt):
+        return _diagnostic("injection_benchmark_model_failed", 2)
+    template = generate_injection_fixtures(trials=options.injection_trials)
+    run_id = uuid4()
+    execution = InjectionExecution((), False, False)
+    provenance: BenchmarkProvenance | None = None
+    documents: dict[str, DocumentBinding] = {}
+    collections: tuple[str, ...] = ()
+    opened = False
+
+    def report(*, provisional: bool) -> InjectionBenchmarkReport:
+        if provenance is None:
+            raise ValueError("injection_benchmark_metadata_failed")
+        return build_injection_benchmark(
+            provenance,
+            documents,
+            execution.observations,
+            strategy=options.strategy,
+            collection_names=collections,
+            provider_profile=options.injection_profile,
+            trials=options.injection_trials,
+            runtime_failed=execution.runtime_failed,
+            provisional=provisional,
+            run_id=None if provisional else run_id,
+        )
+
+    def publish(item: InjectionBenchmarkReport, directory: Path) -> Path:
+        config.validate_paths()
+        content = item.model_dump_json()
+        if any(
+            secret in content
+            for secret in (
+                config.application_password.get_secret_value(),
+                config.fixture_password.get_secret_value(),
+                "FACTANSWER",
+                "AUDITCANARY",
+                "Bearer ",
+                "Authorization",
+            )
+        ):
+            raise ValueError("unsafe_injection_benchmark_artifact")
+        return write_injection_benchmark(item, directory)
+
+    def checkpoint(current: InjectionExecution) -> None:
+        nonlocal execution
+        execution = current
+        publish(
+            report(provisional=True),
+            config.report_dir / "injection-checkpoints" / run_id.hex,
+        )
+
+    try:
+        with AuditWorkspace(config, template, embeddings=embeddings) as workspace:
+            opened = True
+            provenance = collect_provenance(workspace, generation)
+            try:
+                pack = prepare_injection_pack(workspace, run_id)
+            finally:
+                documents = dict(workspace.bindings.documents)
+                collections = workspace.store.collection_names()
+            execution = execute_injection_benchmark(
+                workspace,
+                pack,
+                generation,
+                strategy=options.strategy,
+                lab=options.lab,
+                trials=options.injection_trials,
+                provider_profile=options.injection_profile,
+                on_record=checkpoint,
+            )
+    except (Exception, KeyboardInterrupt) as error:
+        if not opened:
+            return _diagnostic("injection_benchmark_workspace_failed", 2)
+        execution = InjectionExecution(
+            execution.observations,
+            True,
+            execution.interrupted or isinstance(error, KeyboardInterrupt),
+        )
+    if (
+        provenance is None
+        or not collections
+        or set(documents) != {doc.id for doc in template.documents}
+    ):
+        return _diagnostic("injection_benchmark_preparation_failed", 2)
+    try:
+        final = report(provisional=False)
+        publish(final, config.report_dir / "injection-benchmarks")
+    except (Exception, KeyboardInterrupt):
+        return _diagnostic("injection_benchmark_report_write_failed", 2)
+    return final.exit_code, {
+        "code": "injection_benchmark_runtime_failed"
+        if execution.runtime_failed
+        else "injection_benchmark_incomplete"
+        if final.exit_code == 2
+        else "injection_benchmark_complete",
+        "exit_code": final.exit_code,
+        "run_id": str(run_id),
+        "case_count": len(execution.observations),
+        "strategy": options.strategy,
+        "provider_mode": generation.mode,
+        "provider_profile": options.injection_profile,
+    }
+
+
 def _offline(options: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     from app.evaluation.cost_reports import validate_cost_report
     from app.evaluation.reports import compare_utility_reports, validate_utility_report
@@ -429,6 +567,11 @@ def main(argv: list[str] | None = None) -> int:
         choices=("shared_pre_filter", "tenant_collections", "lab_post_filter"),
     )
     parser.add_argument("--lab", action="store_true")
+    parser.add_argument("--pack", choices=("utility", "injection"))
+    parser.add_argument(
+        "--injection-profile", choices=("resistant", "obeying", "deny_all")
+    )
+    parser.add_argument("--injection-trials", type=int)
     parser.add_argument("--embedding-root", type=Path)
     parser.add_argument("--provider", choices=("fixture", "local"))
     parser.add_argument("--base-url")
@@ -462,6 +605,9 @@ def main(argv: list[str] | None = None) -> int:
                         "weights_sha256",
                         "server_version",
                         "qdrant_container",
+                        "pack",
+                        "injection_profile",
+                        "injection_trials",
                     )
                 )
                 or options.lab
@@ -476,6 +622,27 @@ def main(argv: list[str] | None = None) -> int:
                 raise _ArgumentFailure
             generation = _generation(options)
             options.strategy = options.strategy or "shared_pre_filter"
+            options.pack = options.pack or "utility"
+            if options.pack == "injection":
+                if (
+                    options.qdrant_container is not None
+                    or options.injection_trials is not None
+                    and not 1 <= options.injection_trials <= 20
+                    or generation.mode == "local"
+                    and options.injection_profile is not None
+                ):
+                    raise _ArgumentFailure
+                options.injection_trials = options.injection_trials or 1
+                options.injection_profile = (
+                    "local"
+                    if generation.mode == "local"
+                    else options.injection_profile or "resistant"
+                )
+            elif (
+                options.injection_profile is not None
+                or options.injection_trials is not None
+            ):
+                raise _ArgumentFailure
     except _ParserExit as stopped:
         return stopped.status
     except Exception:
@@ -484,7 +651,11 @@ def main(argv: list[str] | None = None) -> int:
         try:
             with _quiet_dependencies():
                 code, output = (
-                    _offline(options) if validating else _run(options, generation)
+                    _offline(options)
+                    if validating
+                    else _run_injection(options, generation)
+                    if options.pack == "injection"
+                    else _run(options, generation)
                 )
         except (Exception, KeyboardInterrupt):
             code, output = _diagnostic("utility_runtime_failed", 2)

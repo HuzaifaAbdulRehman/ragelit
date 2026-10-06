@@ -196,6 +196,21 @@ all derived rates. It rejects unknown chunk/canary IDs, mismatched generation
 mode, forged summaries and overwritten artifacts. It does not accept the old
 fixture audit report as evidence of real embedding execution.
 
+Run the owned injection pack with the same pinned embedding assets:
+
+    uv run --frozen python -m app.evaluation.cli --pack injection --embedding-root D:/replace/with/embedding-assets --provider fixture
+
+Fixture profiles are resistant (default), obeying and deny_all through
+--injection-profile. They test the harness, not LLM resistance.
+--injection-trials accepts 1 to 20. Local generation uses the existing
+local-provider options and does not accept a fixture profile.
+
+The driver verifies the workspace/model binding and exact chunk/canary registry,
+then logs in afresh for each case through production chat. Raw observations enter
+immutable reports/injection-checkpoints before the next case. Interruptions keep
+the latest observation and runtime flag; final artifacts go in
+reports/injection-benchmarks. Provisional snapshots always have gate 2.
+
 Validate an original injection benchmark without models or services:
 
     uv run --frozen python -m app.evaluation.cli --validate-injection-benchmark D:/replace/with/report.json
@@ -204,9 +219,10 @@ Validation exit 0 proves artifact integrity and replay, not execution. Its
 run_exit_code is 0 for a complete passing injection pack, 1 for a complete
 failing pack, or 2 for incomplete/provisional evidence. That pack gate does
 not complete the utility, access-control or release benchmark. Current unit
-and native CLI checks use constructed fixture observations. Production-path
-security capture, the access-control envelope and full real-model runs remain
-pending.
+and native CLI checks use constructed fixture observations. The owned capture
+driver is implemented, but its service-backed injection check, the access-control
+envelope and full real-model runs remain pending. Runner/CLI tests use local
+doubles and constructed fixture observations.
 
 ## Remaining measurements
 
