@@ -163,15 +163,39 @@ unknown, never zero. Original numeric facts are not output-disclosure canaries.
 A short integration check uses real pinned embeddings and fixture generation.
 It observes access, revocation denial and restored access for one document.
 That is not a three-organization timing cohort or a real-LLM quality result.
-The fixed full timing cohort will use change-notice in each organization;
-those measurements and their final report integration are still pending.
+The CLI runs the fixed timing cohort using change-notice in each organization
+after the full utility query cohort. These records now enter the cost report;
+the full three-organization measurements are still pending.
 
 ## Remaining measurements
 
 The [cost collectors](../../backend/app/evaluation/costs.py) measure ingestion
-work and owned storage. These records and revocation capture are not yet
-attached to the final CLI artifacts. Full measurements and security rates
-remain pending.
+work and owned storage. The CLI saves them with revocation observations in
+reports/utility-costs, alongside the separate utility report. Full measurements
+and security rates remain pending. Utility/cost completion is not release
+completion or a security result.
+
+Add --qdrant-container with the owned container name to collect physical vector
+storage. Without that measurement, storage coverage stays incomplete and the
+combined utility/cost gate is 2, even when the utility cohort itself has gate 0.
+The CLI records ingestion checkpoints before each next document and revocation
+checkpoints after each event, under reports/cost-checkpoints. They are immutable
+and provisional, so they always have gate 2.
+
+A setup failure retains measured ingestion work without inventing utility
+bindings or query records. A storage or revocation failure does not discard a
+completed utility cohort. Reports state the expected and observed counts;
+missing primary values stay unknown. The mean revocation delay requires all
+three eligible events. A partial observed mean carries its smaller denominator.
+
+Replay an original cost report without models or services:
+
+    uv run --frozen python -m app.evaluation.cli --validate-cost-report D:/replace/with/report.json
+
+This validates its receipt and recomputes summaries from bounded raw records,
+including the nested utility report. Validation exit 0 is separate from the
+recorded run gate. It cannot attest that an operator executed the measurements
+or that the declared generation weights were loaded.
 
 Fresh index time requires all 87 successful ingestion observations. Partial
 work keeps its recorded elapsed time, and reusing an existing index leaves
@@ -193,8 +217,8 @@ also do not establish physical storage size.
 
 These helpers and corpus checks do not establish genuine model quality.
 [Local embedding pins](model-pins.md) now define verified offline embedding
-assets. The release still requires effective generation pins and configuration, per-query
-raw artifacts, unauthorized retrieval/context/output rates, injection success,
+assets. The release still requires effective generation pins and configuration,
+full-cohort raw artifacts, unauthorized retrieval/context/output rates, injection success,
 citation correctness, index time, storage, collection count and revocation
 delay. Deterministic audit fixtures remain security regressions, not a substitute
 for the required benchmark.

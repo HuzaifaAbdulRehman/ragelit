@@ -217,11 +217,12 @@ def test_run_preserves_completed_records_and_durable_provisional_snapshots(
         assert template.pack_id == "utility-v1"
         opened.append(config)
         yield SimpleNamespace(
-            store=SimpleNamespace(collection_names=lambda: ("ragelit_audit_test",))
+            bindings=SimpleNamespace(seeded=False),
+            store=SimpleNamespace(collection_names=lambda: ("ragelit_audit_test",)),
         )
 
     monkeypatch.setattr(workspace, "AuditWorkspace", owned)
-    monkeypatch.setattr(seeding, "seed_workspace", lambda *args: None)
+    monkeypatch.setattr(seeding, "seed_workspace", lambda *args, **kwargs: None)
     monkeypatch.setattr(runner, "utility_document_bindings", lambda *args: bindings())
     completed: list[str] = []
 
@@ -232,7 +233,9 @@ def test_run_preserves_completed_records_and_durable_provisional_snapshots(
 
         def capture(query: Any) -> QueryCapture:
             if completed:
-                snapshots = tuple(config.report_dir.rglob("*.json"))
+                snapshots = tuple(
+                    (config.report_dir / "utility-checkpoints").rglob("*.json")
+                )
                 if not checkpoint_fails:
                     artifacts = [p for p in snapshots if ".sha256." not in p.name]
                     assert len(artifacts) == 1

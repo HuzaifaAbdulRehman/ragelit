@@ -139,9 +139,21 @@ def _generation(options: argparse.Namespace) -> GenerationRecord:
 def _run(
     options: argparse.Namespace, generation: GenerationRecord
 ) -> tuple[int, dict[str, Any]]:
+    from app.audits.isolation_lab import LabPostFilterStore
     from app.audits.isolation_reports import IsolationStrategy
-    from app.audits.seeding import seed_workspace
+    from app.audits.seeding import FixtureCitingProvider, seed_workspace
     from app.audits.workspace import AuditConfiguration, AuditWorkspace
+    from app.evaluation.cost_reports import (
+        UtilityCostReport,
+        build_cost_report,
+        write_cost_report,
+    )
+    from app.evaluation.costs import (
+        IngestionTiming,
+        StorageMeasurement,
+        collect_storage,
+        index_build_measurement,
+    )
     from app.evaluation.dataset import generate_utility_corpus
     from app.evaluation.models import PinnedEmbeddingProvider, load_embedding_pins
     from app.evaluation.reports import (
@@ -151,6 +163,7 @@ def _run(
         build_utility_report,
         write_utility_report,
     )
+    from app.evaluation.revocations import RevocationMeasurement, capture_revocation
     from app.evaluation.runner import (
         UtilityExecution,
         execute_utility_queries,
@@ -184,8 +197,12 @@ def _run(
     bindings: tuple[UtilityDocumentBinding, ...] = ()
     collections: tuple[str, ...] = ()
     opened = ready = False
+    timings: list[IngestionTiming] = []
+    index_reused = index_failed = costs_failed = False
+    storage: StorageMeasurement | None = None
+    revocations: list[RevocationMeasurement] = []
 
-    def publish(item: UtilityReport, directory: Path) -> Path:
+    def publish(item: UtilityReport | UtilityCostReport, directory: Path) -> Path:
         config.validate_paths()
         content = item.model_dump_json()
         if any(
@@ -199,7 +216,29 @@ def _run(
             )
         ):
             raise ValueError("unsafe_utility_artifact")
+        if isinstance(item, UtilityCostReport):
+            return write_cost_report(item, directory)
         return write_utility_report(item, directory)
+
+    def cost_snapshot(
+        utility: UtilityReport | None = None, *, provisional: bool = True
+    ) -> UtilityCostReport:
+        if provenance is None:
+            raise ValueError("utility_metadata_failed")
+        return build_cost_report(
+            provenance,
+            strategy=strategy,
+            collection_names=collections,
+            utility=utility,
+            index=index_build_measurement(
+                tuple(timings), reused=index_reused, runtime_failed=index_failed
+            ),
+            storage=storage,
+            revocations=tuple(revocations),
+            runtime_failed=costs_failed or execution.runtime_failed,
+            provisional=provisional,
+            run_id=None if provisional else run_id,
+        )
 
     def checkpoint(records: tuple[UtilityQueryRecord, ...]) -> None:
         nonlocal execution
@@ -216,14 +255,32 @@ def _run(
         )
         publish(snapshot, config.report_dir / "utility-checkpoints" / run_id.hex)
 
+    def on_ingestion(document_id: str, duration_ms: float, ingested: bool) -> None:
+        nonlocal collections
+        timings.append(
+            IngestionTiming(
+                document_id=document_id, duration_ms=duration_ms, ready=ingested
+            )
+        )
+        collections = workspace.store.collection_names()
+        publish(cost_snapshot(), config.report_dir / "cost-checkpoints" / run_id.hex)
+
     try:
         with AuditWorkspace(config, template, embeddings=embeddings) as workspace:
             opened = True
-            seed_workspace(workspace, template)
+            provenance = collect_provenance(workspace, generation)
+            index_reused = workspace.bindings.seeded
+            collections = workspace.store.collection_names()
+            seed_workspace(workspace, template, on_ingestion=on_ingestion)
             bindings = utility_document_bindings(workspace, corpus)
             collections = workspace.store.collection_names()
-            provenance = collect_provenance(workspace, generation)
             ready = True
+            try:
+                storage = collect_storage(
+                    workspace, qdrant_container=options.qdrant_container
+                )
+            except Exception:
+                costs_failed = True
             execution = execute_utility_queries(
                 workspace,
                 corpus,
@@ -232,35 +289,84 @@ def _run(
                 lab=options.lab,
                 on_record=checkpoint,
             )
+            if not execution.interrupted and len(execution.records) == len(
+                corpus.queries
+            ):
+                try:
+                    provider = (
+                        generation.local.provider(workspace.settings)
+                        if generation.local is not None
+                        else FixtureCitingProvider()
+                    )
+                    store = (
+                        LabPostFilterStore(workspace, lab=True)
+                        if options.lab
+                        else workspace.store
+                    )
+                    for organization in corpus.organizations:
+                        query = next(
+                            query
+                            for query in corpus.queries
+                            if query.id == f"{organization.id}:change-notice"
+                        )
+                        event = capture_revocation(
+                            workspace, corpus, query, provider=provider, store=store
+                        )
+                        revocations.append(event)
+                        costs_failed |= event.runtime_failed
+                        utility = build_utility_report(
+                            provenance,
+                            bindings,
+                            execution.records,
+                            strategy=strategy,
+                            collection_names=collections,
+                            runtime_failed=execution.runtime_failed,
+                        )
+                        publish(
+                            cost_snapshot(utility),
+                            config.report_dir / "cost-checkpoints" / run_id.hex,
+                        )
+                        if event.runtime_failed:
+                            break
+                except (Exception, KeyboardInterrupt):
+                    costs_failed = True
     except (Exception, KeyboardInterrupt) as error:
         if not opened:
             return _diagnostic("utility_workspace_failed", 2)
-        if not ready:
+        if provenance is None or not collections:
             return _diagnostic("utility_preparation_failed", 2)
+        costs_failed = True
+        index_failed = not ready
         execution = UtilityExecution(
             execution.records, True, isinstance(error, KeyboardInterrupt)
         )
     if provenance is None:
         return _diagnostic("utility_metadata_failed", 2)
     try:
-        report = build_utility_report(
-            provenance,
-            bindings,
-            execution.records,
-            strategy=strategy,
-            collection_names=collections,
-            runtime_failed=execution.runtime_failed,
-        ).model_copy(update={"run_id": run_id})
-        publish(report, config.report_dir)
+        report = None
+        if ready:
+            report = build_utility_report(
+                provenance,
+                bindings,
+                execution.records,
+                strategy=strategy,
+                collection_names=collections,
+                runtime_failed=execution.runtime_failed,
+            ).model_copy(update={"run_id": run_id})
+            publish(report, config.report_dir)
+        costs = cost_snapshot(report, provisional=False)
+        publish(costs, config.report_dir / "utility-costs")
     except (Exception, KeyboardInterrupt):
         return _diagnostic("utility_report_write_failed", 2)
-    return report.exit_code, {
+    return costs.exit_code, {
         "code": "utility_runtime_failed"
-        if execution.runtime_failed
+        if costs.runtime_failed
         else "utility_incomplete"
-        if report.exit_code == 2
-        else "utility_complete",
-        "exit_code": report.exit_code,
+        if costs.exit_code == 2
+        else "utility_cost_complete",
+        "exit_code": costs.exit_code,
+        "utility_exit_code": report.exit_code if report is not None else None,
+        "security_measured": False,
         "run_id": str(run_id),
         "query_count": len(execution.records),
         "strategy": strategy,
@@ -269,9 +375,18 @@ def _run(
 
 
 def _offline(options: argparse.Namespace) -> tuple[int, dict[str, Any]]:
+    from app.evaluation.cost_reports import validate_cost_report
     from app.evaluation.reports import compare_utility_reports, validate_utility_report
 
     try:
+        if options.validate_cost_report is not None:
+            costs = validate_cost_report(options.validate_cost_report)
+            return 0, {
+                "code": "utility_cost_artifact_valid",
+                "exit_code": 0,
+                "run_exit_code": costs.exit_code,
+                "coverage_complete": costs.coverage_complete,
+            }
         if options.validate_report is not None:
             report = validate_utility_report(options.validate_report)
             return 0, {
@@ -309,13 +424,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--model")
     parser.add_argument("--weights-sha256")
     parser.add_argument("--server-version")
+    parser.add_argument("--qdrant-container")
     offline = parser.add_mutually_exclusive_group()
     offline.add_argument("--validate-report", type=Path)
+    offline.add_argument("--validate-cost-report", type=Path)
     offline.add_argument("--compare-reports", type=Path, nargs=2)
     try:
         options = parser.parse_args(argv)
         validating = (
-            options.validate_report is not None or options.compare_reports is not None
+            options.validate_report is not None
+            or options.validate_cost_report is not None
+            or options.compare_reports is not None
         )
         if validating:
             if (
@@ -329,6 +448,7 @@ def main(argv: list[str] | None = None) -> int:
                         "model",
                         "weights_sha256",
                         "server_version",
+                        "qdrant_container",
                     )
                 )
                 or options.lab
