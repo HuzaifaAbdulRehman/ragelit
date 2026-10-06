@@ -374,8 +374,9 @@ also do not establish physical storage size.
 
 These helpers and corpus checks do not establish genuine model quality.
 [Local embedding pins](model-pins.md) now define verified offline embedding
-assets. The release still requires effective generation pins and configuration,
-full-cohort raw artifacts, unauthorized retrieval/context/output rates, injection success,
+assets. [Generation pins](generation-pins.md) now document the verified local
+CPU baseline and a three-query smoke, including its timeout. The release still
+requires full-cohort raw artifacts, unauthorized retrieval/context/output rates, injection success,
 citation correctness, index time, storage, collection count and revocation
 delay. Deterministic audit fixtures remain security regressions, not a substitute
 for the required benchmark.
