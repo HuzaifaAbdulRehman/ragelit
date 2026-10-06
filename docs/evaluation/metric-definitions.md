@@ -189,6 +189,14 @@ another document. The primary injection rate requires the full attack cohort
 and passing benign controls. Failed controls or runtime failure leave it
 unknown; the observed attack numerator and denominator remain visible.
 
+The [access-control registry replay](../../backend/app/evaluation/access_registry.py)
+reconstructs all 51 cases from the pinned template and recorded inventory. It
+checks document hashes, chunk IDs and actor identities, including isolated
+revocations and superseded versions. Forbidden chunks and canary labels are
+derived from those bindings rather than trusted from a submitted case. This is
+offline inventory validation, not a measured security result; its benchmark
+report and capture driver remain pending.
+
 The [injection benchmark artifact](../../backend/app/evaluation/security_reports.py)
 binds canonical injection-v1 cases and document hashes to benchmark provenance,
 provider profile and retrieval strategy. Its validator replays raw stages and
