@@ -106,6 +106,8 @@ def _compatible(
         or reference.exit_code == 2
         or candidate.exit_code == 2
         or reference.provenance != candidate.provenance
+        or reference.provenance.git_dirty
+        or candidate.provenance.git_dirty
         or reference.pack_id != candidate.pack_id
         or reference.seed != candidate.seed
         or reference.template_hash != candidate.template_hash

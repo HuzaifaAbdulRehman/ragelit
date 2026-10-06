@@ -473,6 +473,8 @@ def compare_utility_reports(
         or not reference.coverage_complete
         or not candidate.coverage_complete
         or reference.provenance != candidate.provenance
+        or reference.provenance.git_dirty
+        or candidate.provenance.git_dirty
     ):
         raise ValueError(_ERROR)
 

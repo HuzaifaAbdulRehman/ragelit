@@ -100,8 +100,10 @@ the actual context. It is source selection, not semantic entailment. Answer-labe
 matches are counted separately; abstention is a miss, not a dropped query.
 
 Paired comparisons require complete logical query cohorts and identical source,
-locks, models, generation settings, machine and service provenance. Reports
-retain bounded IDs and observations, not document bodies, prompts or answers.
+locks, models, generation settings, machine and service provenance. Both source
+runs must be clean: a commit ID plus git_dirty=true does not identify the
+uncommitted changes. Dirty-source reports remain replayable individually.
+Reports retain bounded IDs and observations, not document bodies, prompts or answers.
 The validator checks original-byte receipts and replays derived fields without
 model calls. Partial inventory is valid evidence but never a completed cohort.
 Security, index/storage costs and revocation timing remain separate required
@@ -293,8 +295,9 @@ doubles and constructed fixture observations.
 
 The comparison helpers in security_comparisons.py replay both source reports
 before pairing logical cases. They require complete coverage, identical model,
-source, machine and service provenance, and different strategies. A completed
-security failure remains eligible; its original gate is retained.
+source, machine and service provenance, and different strategies. Both source
+runs must have git_dirty=false. A completed security failure remains eligible;
+its original gate is retained.
 
 Access comparisons also match actual current/previous document hashes and all
 retained instance history. Lifecycle documents depend on their cohort nonce,
