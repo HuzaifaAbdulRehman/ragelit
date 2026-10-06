@@ -50,6 +50,11 @@ processes were stopped afterward; temporary uploaded fixture files were removed
 by the existing E2E cleanup. The dedicated test database retains only synthetic
 records until the next fixture reset.
 
+A local, redacted Gitleaks branch-history scan covered changes from `58e7a6f`
+through `93acaab`: 63 commits scanned, about 1.25 MB, exit 0, no detected leaks.
+The log and empty JSON report are retained in the local ledger directory.
+This does not replace dependency/container scans or prove arbitrary files safe.
+
 ## Full real-model baseline
 
 Run `8b247148-ce0f-4751-8e73-2264cd5fb582` used clean source `93cc651`, the pinned

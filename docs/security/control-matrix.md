@@ -38,8 +38,13 @@ listed revisions; they do not establish a current-head release pass.
   resistance result is available.
 - [Isolation comparison](../verification/2026-10-05-isolation-comparison.md)
   records the three real 51-case target journeys. The successful CLI export
-  cohort, final branch review and current-head Linux gate remain pending.
+  cohort and current-head Linux gate remain pending.
   The sleep-interrupted CLI report stays inconclusive.
+- [Local release checkpoint](../verification/2026-10-07-local-release-checkpoint.md)
+  records the clean Windows clone's complete 51-case safe audit, frontend and
+  static checks, a local Linux setup smoke and one independent integration
+  review. The review found no new implementation defect requiring a fix; it
+  did not approve a completed release. Real-generation coverage remains open.
 
 Passing a single-report integrity check does not change its recorded audit
 outcome. A checksum is not a signature or proof against an operator fabricating
@@ -57,8 +62,8 @@ storage, collection count and revocation delay. Paired confidence intervals
 must be reported where appropriate. Deterministic providers cannot supply
 real-model quality or resistance claims.
 
-Clean-clone Windows/Linux checks, the recorded demo and current-head release
-gates are also pending. The [CI workflow](../../.github/workflows/ci.yml) defines
+The remaining clean-clone demo, Linux CI and current-head full release gates
+are pending. The [CI workflow](../../.github/workflows/ci.yml) defines
 secret scanning and offline locked-dependency auditing; configured gates are
 not evidence that the release passed them.
 
