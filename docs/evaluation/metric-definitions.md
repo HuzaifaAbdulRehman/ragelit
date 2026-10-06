@@ -141,11 +141,37 @@ separately states run_exit_code and coverage_complete; a valid partial artifact
 is not a completed run. --compare-reports takes two original report paths and
 rejects incomplete cohorts or mismatched provenance.
 
+## Revocation confirmation
+
+[Revocation capture](../../backend/app/evaluation/revocations.py) first checks
+that the actor can retrieve and cite the target's current version. A missing
+positive baseline causes no grant mutation.
+
+Confirmation starts immediately after a successful grant-update response and
+ends when the same actor's follow-up chat query has returned. It includes fresh
+authentication and ownership checks, so it measures application confirmation,
+not database propagation or a guaranteed worst-case delay. Denial requires
+observed accepted retrieval and context without the target, and no delivered
+target citation. Lab raw-retrieval exposure is a separate security measurement.
+
+The driver reads the original visibility and grants from the exact owned
+database, then restores them through the administration API. Records retain
+the before/after observations, acknowledgment state and restoration outcome.
+Missing evidence, runtime failure or failed restoration leaves primary delay
+unknown, never zero. Original numeric facts are not output-disclosure canaries.
+
+A short integration check uses real pinned embeddings and fixture generation.
+It observes access, revocation denial and restored access for one document.
+That is not a three-organization timing cohort or a real-LLM quality result.
+The fixed full timing cohort will use change-notice in each organization;
+those measurements and their final report integration are still pending.
+
 ## Remaining measurements
 
 The [cost collectors](../../backend/app/evaluation/costs.py) measure ingestion
-work and owned storage. These records are not yet attached to the final CLI
-artifacts; security and revocation measurements remain pending.
+work and owned storage. These records and revocation capture are not yet
+attached to the final CLI artifacts. Full measurements and security rates
+remain pending.
 
 Fresh index time requires all 87 successful ingestion observations. Partial
 work keeps its recorded elapsed time, and reusing an existing index leaves
