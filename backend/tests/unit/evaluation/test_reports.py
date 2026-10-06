@@ -744,3 +744,26 @@ def test_full_summary_keeps_a_measured_miss_and_uses_accepted_latency() -> None:
     assert result.summary.retrieval_p95_ms == pytest.approx(83.7)
     assert result.summary.retrieval_queries == 87
     assert result.summary.delivered_citations == 86
+
+
+def test_provisional_full_snapshot_cannot_claim_a_completed_run(tmp_path: Path) -> None:
+    from app.evaluation.reports import (
+        build_utility_report,
+        validate_utility_report,
+        write_utility_report,
+    )
+
+    full = report()
+    snapshot = build_utility_report(
+        full.provenance,
+        full.bindings,
+        full.records,
+        collection_names=full.collection_names,
+        provisional=True,
+    )
+    assert snapshot.inventory_complete
+    assert not snapshot.coverage_complete
+    assert snapshot.exit_code == 2
+    assert not snapshot.runtime_failed
+    path = write_utility_report(snapshot, tmp_path)
+    assert validate_utility_report(path).provisional

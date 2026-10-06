@@ -183,6 +183,7 @@ class UtilityReport(AuditModel):
     inventory_complete: bool
     coverage_complete: bool
     runtime_failed: bool
+    provisional: bool = Field(default=False, strict=True)
     exit_code: Literal[0, 2]
     evidence_notice: Literal[
         "Authored synthetic corpus; citation relevance is not semantic entailment. "
@@ -396,6 +397,7 @@ def build_utility_report(
     strategy: str = "shared_pre_filter",
     collection_names: tuple[str, ...],
     runtime_failed: bool = False,
+    provisional: bool = False,
 ) -> UtilityReport:
     provenance = BenchmarkProvenance.model_validate(provenance.model_dump())
     bindings = tuple(
@@ -419,6 +421,7 @@ def build_utility_report(
     complete = (
         inventory
         and not runtime_failed
+        and not provisional
         and all(item.coverage_complete for item in results)
     )
     return UtilityReport(
@@ -432,6 +435,7 @@ def build_utility_report(
         inventory_complete=inventory,
         coverage_complete=complete,
         runtime_failed=runtime_failed,
+        provisional=provisional,
         exit_code=0 if complete else 2,
     )
 
@@ -445,6 +449,7 @@ def _checked_report(report: UtilityReport) -> UtilityReport:
         strategy=report.strategy,
         collection_names=report.collection_names,
         runtime_failed=report.runtime_failed,
+        provisional=report.provisional,
     ).model_copy(update={"run_id": report.run_id, "created_at": report.created_at})
     if replayed != report or report.created_at.tzinfo is None:
         raise ValueError(_ERROR)

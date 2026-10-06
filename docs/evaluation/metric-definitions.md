@@ -1,7 +1,8 @@
 # Benchmark metric definitions
 
-Status: calculation helpers are implemented and unit-tested. The dataset
-runner, real-model measurements and release benchmark are not complete.
+Status: calculation helpers, production query capture and the utility CLI are
+implemented. Real-LLM cohorts, security/cost measurements and release checks
+are not complete.
 
 [Implementation](../../backend/app/evaluation/metrics.py) and
 [tests](../../backend/tests/unit/evaluation/test_metrics.py) use the standard
@@ -81,8 +82,11 @@ uv run --frozen python -c "from app.evaluation.dataset import generate_utility_c
 ## Utility report replay
 
 The [report schema and offline validator](../../backend/app/evaluation/reports.py)
-are implemented. The production runner and measured cohort are still pending.
-Tests use constructed observations; their scores are not model-quality results.
+are implemented, with [production query capture](../../backend/app/evaluation/runner.py)
+and a [local CLI](../../backend/app/evaluation/cli.py). Unit tests use constructed
+observations; their scores are not model-quality results. A short integration
+check uses real pinned embeddings, fixture generation and an intentional timeout.
+The full measured cohort is still pending.
 
 Primary Recall@10 and MRR@10 require all 87 retrieval observations. A measured
 miss scores zero. Missing, truncated or observer-failed retrieval stays unknown.
@@ -102,6 +106,40 @@ The validator checks original-byte receipts and replays derived fields without
 model calls. Partial inventory is valid evidence but never a completed cohort.
 Security, index/storage costs and revocation timing remain separate required
 measurements; this utility report alone is not the complete release benchmark.
+
+## Utility CLI
+
+The CLI uses the existing process-local RAGELIT_AUDIT configuration and owned
+workspace guards. Give it an absolute path to the verified embedding folder
+and explicitly choose fixture or local generation. Fixture mode runs real
+embeddings but does not measure LLM answer quality.
+
+From backend, a fixture run starts with:
+
+    uv run --frozen python -m app.evaluation.cli --embedding-root D:/replace/with/embedding-assets --provider fixture
+
+Local mode also requires a numeric loopback HTTP /v1 endpoint, model identifier,
+weights SHA-256 and server version through --base-url, --model,
+--weights-sha256 and --server-version. These declarations do not attest which
+weights the server loaded. Tenant collections require --strategy
+tenant_collections; the deliberately broken baseline requires --strategy
+lab_post_filter together with --lab.
+
+Each query logs in afresh and passes through production chat and authorization.
+Completed observations are written to immutable, provisional reports before
+the next query, under reports/utility-checkpoints within the owned workspace.
+Even a provisional snapshot containing all 87 queries has gate 2 and cannot
+enter paired comparisons. The final report and SHA-256 receipt go in reports.
+Interruptions and ordinary query failures retain their evidence and gate 2.
+
+Validate an original report without models or services:
+
+    uv run --frozen python -m app.evaluation.cli --validate-report D:/replace/with/report.json
+
+Validation exit 0 means artifact integrity and replay passed. Its JSON output
+separately states run_exit_code and coverage_complete; a valid partial artifact
+is not a completed run. --compare-reports takes two original report paths and
+rejects incomplete cohorts or mismatched provenance.
 
 ## Remaining measurements
 
