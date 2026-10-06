@@ -143,6 +143,28 @@ rejects incomplete cohorts or mismatched provenance.
 
 ## Remaining measurements
 
+The [cost collectors](../../backend/app/evaluation/costs.py) measure ingestion
+work and owned storage. These records are not yet attached to the final CLI
+artifacts; security and revocation measurements remain pending.
+
+Fresh index time requires all 87 successful ingestion observations. Partial
+work keeps its recorded elapsed time, and reusing an existing index leaves
+primary build time unknown. Timings bracket the worker-to-ready helper,
+including ownership checks and ready-version verification. They exclude model
+download/loading, document upload, grant updates and later binding publication.
+
+Storage separates the entire owned PostgreSQL database in bytes, original
+upload files in bytes, and owned Qdrant collection directories in allocated
+KiB converted to bytes. The latter uses a read-only Docker probe after checking
+the container's immutable ID, official image/version and published loopback
+port against the configured service. It excludes shared server overhead and
+is not process RAM. An unavailable collection measurement stays unknown.
+
+Do not substitute Qdrant 1.15.4 segment disk/RAM telemetry for a disk probe:
+the [pinned implementation](https://github.com/qdrant/qdrant/blob/v1.15.4/lib/segment/src/segment/entry.rs)
+sets both fields to zero as unimplemented placeholders. Vector dimensions
+also do not establish physical storage size.
+
 These helpers and corpus checks do not establish genuine model quality.
 [Local embedding pins](model-pins.md) now define verified offline embedding
 assets. The release still requires effective generation pins and configuration, per-query
