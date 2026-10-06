@@ -213,8 +213,19 @@ Validate the original artifact offline:
 
 Exit 0 proves integrity and replay; run_exit_code and coverage_complete describe
 the recorded run separately. Current checks use constructed fixture observations,
-not actual embeddings or a local LLM. The owned access capture driver and full
-measurements remain pending.
+not actual embeddings or a local LLM.
+
+The [access capture driver](../../backend/app/evaluation/access_runner.py)
+validates the full canonical pack before selecting one case. Ordinary queries
+log in afresh, including isolated lifecycle actors. Revoked-membership cases keep
+their pre-revocation session; token expiry remains a failure, not a passed denial.
+Controlled citation requests retain their fixture provider and candidate-rejection
+evidence. The original provider guard is unchanged.
+
+Query failures retain observed stages and restore application state. Checkpoints
+receive the latest raw record and interruption flags before another case starts.
+Current runner tests use local service doubles, not real embeddings or an LLM.
+The runtime access CLI, service-backed checks and full measurements remain pending.
 
 The [injection benchmark artifact](../../backend/app/evaluation/security_reports.py)
 binds canonical injection-v1 cases and document hashes to benchmark provenance,
