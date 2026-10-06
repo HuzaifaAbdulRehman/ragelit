@@ -236,6 +236,15 @@ original pack, and writes immutable reports/access-checkpoints before each next
 case. Final artifacts go in reports/access-benchmarks. The utility-only storage
 option and injection-specific flags are rejected for this pack.
 
+Add --cohort-id followed by a UUID to select matching lifecycle-document
+contents for strategy comparisons. Use the same ID in separate, fresh owned
+workspaces. This option is only accepted by the access-control runtime pack;
+omitting it creates a new UUID.
+
+A cohort ID already present in that workspace's instance bindings, final
+artifact/receipt, or checkpoint directory is rejected before pack preparation.
+This is not a resume option. Existing evidence stays intact.
+
 Interrupted queries and checkpoint failures retain the latest raw record. A
 failure after preparation publishes a partial final report when its canonical
 inventory is available; incomplete preparation returns a redacted setup failure
@@ -290,8 +299,9 @@ security failure remains eligible; its original gate is retained.
 Access comparisons also match actual current/previous document hashes and all
 retained instance history. Lifecycle documents depend on their cohort nonce,
 so independently generated cohort IDs are not comparable. Use the same cohort
-namespace in separate owned workspaces. The runtime CLI cannot select that
-namespace yet. Workspace, actor, document and chunk UUIDs are not pairing keys.
+namespace in separate owned workspaces, selected through --cohort-id on each
+access-control runtime command. Workspace, actor, document and chunk UUIDs are
+not pairing keys. All retained instance history must still match.
 
 Injection comparisons require identical trial counts and provider profiles.
 Exposure differences pair every case at five boundaries; injection ASR pairs

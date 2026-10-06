@@ -10,7 +10,7 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from app.audits.cli import (
     _ArgumentFailure,
@@ -545,7 +545,7 @@ def _run_access(
     except (Exception, KeyboardInterrupt):
         return _diagnostic("access_benchmark_model_failed", 2)
     template = generate_fixtures()
-    run_id = uuid4()
+    run_id = options.cohort_id or uuid4()
     execution = AccessExecution((), False, False)
     provenance: BenchmarkProvenance | None = None
     inventory: FixtureBindings | None = None
@@ -595,6 +595,15 @@ def _run_access(
     try:
         with AuditWorkspace(config, template, embeddings=embeddings) as workspace:
             opened = True
+            cohort_paths = (
+                config.report_dir / "access-benchmarks" / f"{run_id}.json",
+                config.report_dir / "access-benchmarks" / f"{run_id}.sha256.json",
+                config.report_dir / "access-checkpoints" / run_id.hex,
+            )
+            if any(
+                key.startswith(f"{run_id}:") for key in workspace.bindings.instances
+            ) or any(path.exists() or path.is_symlink() for path in cohort_paths):
+                return _diagnostic("access_benchmark_cohort_already_used", 2)
             provenance = collect_provenance(workspace, generation)
             try:
                 pack = prepare_pack(workspace, run_id)
@@ -733,6 +742,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--lab", action="store_true")
     parser.add_argument("--pack", choices=("utility", "injection", "access-control"))
+    parser.add_argument("--cohort-id", type=UUID)
     parser.add_argument(
         "--injection-profile", choices=("resistant", "obeying", "deny_all")
     )
@@ -779,6 +789,7 @@ def main(argv: list[str] | None = None) -> int:
                         "pack",
                         "injection_profile",
                         "injection_trials",
+                        "cohort_id",
                     )
                 )
                 or options.lab
@@ -794,6 +805,8 @@ def main(argv: list[str] | None = None) -> int:
             generation = _generation(options)
             options.strategy = options.strategy or "shared_pre_filter"
             options.pack = options.pack or "utility"
+            if options.cohort_id is not None and options.pack != "access-control":
+                raise _ArgumentFailure
             if options.pack == "injection":
                 if (
                     options.qdrant_container is not None

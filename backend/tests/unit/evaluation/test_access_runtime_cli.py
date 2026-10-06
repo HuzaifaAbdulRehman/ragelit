@@ -68,6 +68,8 @@ def test_access_runtime_publishes_original_records_and_durable_snapshots(
 
     fixture = access_workspace
     config = fixture.workspace.config
+    prepared_inventory = fixture.workspace.bindings
+    fixture.workspace.bindings = prepared_inventory.model_copy(update={"instances": {}})
     monkeypatch.setattr(cli, "_configuration", lambda: config)
     monkeypatch.setattr(cli, "collect_provenance", lambda *args: provenance())
     monkeypatch.setattr(cli, "uuid4", lambda: RUN_ID)
@@ -83,6 +85,7 @@ def test_access_runtime_publishes_original_records_and_durable_snapshots(
 
     def prepare(owned: Any, run_id: Any) -> Any:
         assert run_id == RUN_ID
+        fixture.workspace.bindings = prepared_inventory
         if failure == "preparation":
             raise OSError("ExceptionSecretMarker")
         return fixture.pack
