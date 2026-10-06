@@ -512,6 +512,136 @@ def _run_injection(
     }
 
 
+def _run_access(
+    options: argparse.Namespace, generation: GenerationRecord
+) -> tuple[int, dict[str, Any]]:
+    from app.audits.fixtures import generate_fixtures
+    from app.audits.target import prepare_pack
+    from app.audits.workspace import AuditConfiguration, AuditWorkspace, FixtureBindings
+    from app.evaluation.access_registry import access_registry
+    from app.evaluation.access_reports import (
+        AccessBenchmarkReport,
+        build_access_benchmark,
+        write_access_benchmark,
+    )
+    from app.evaluation.access_runner import AccessExecution, execute_access_benchmark
+    from app.evaluation.models import PinnedEmbeddingProvider, load_embedding_pins
+
+    try:
+        config = AuditConfiguration.model_validate(
+            _configuration().model_dump()
+            | {
+                "embedding_fingerprint": load_embedding_pins().fingerprint,
+                "embedding_dimension": 384,
+                "vector_strategy": "tenant_collections"
+                if options.strategy == "tenant_collections"
+                else "shared_pre_filter",
+            }
+        )
+    except Exception:
+        return _diagnostic("access_benchmark_invalid_configuration", 2)
+    try:
+        embeddings = PinnedEmbeddingProvider(options.embedding_root)
+    except (Exception, KeyboardInterrupt):
+        return _diagnostic("access_benchmark_model_failed", 2)
+    template = generate_fixtures()
+    run_id = uuid4()
+    execution = AccessExecution((), False, False)
+    provenance: BenchmarkProvenance | None = None
+    inventory: FixtureBindings | None = None
+    collections: tuple[str, ...] = ()
+    opened = False
+
+    def report(*, provisional: bool) -> AccessBenchmarkReport:
+        if provenance is None or inventory is None:
+            raise ValueError("access_benchmark_metadata_failed")
+        return build_access_benchmark(
+            provenance,
+            inventory,
+            execution.records,
+            strategy=options.strategy,
+            collection_names=collections,
+            run_id=run_id,
+            runtime_failed=execution.runtime_failed,
+            provisional=provisional,
+        )
+
+    def publish(item: AccessBenchmarkReport, directory: Path) -> Path:
+        config.validate_paths()
+        content = item.model_dump_json()
+        if any(
+            secret in content
+            for secret in (
+                config.application_password.get_secret_value(),
+                config.fixture_password.get_secret_value(),
+                "FACTANSWER",
+                "AUDITCANARY",
+                "Bearer ",
+                "Authorization",
+            )
+        ):
+            raise ValueError("unsafe_access_benchmark_artifact")
+        return write_access_benchmark(item, directory)
+
+    def checkpoint(current: AccessExecution) -> None:
+        nonlocal execution, inventory
+        execution = current
+        inventory = workspace.bindings
+        publish(
+            report(provisional=True),
+            config.report_dir / "access-checkpoints" / run_id.hex,
+        )
+
+    try:
+        with AuditWorkspace(config, template, embeddings=embeddings) as workspace:
+            opened = True
+            provenance = collect_provenance(workspace, generation)
+            try:
+                pack = prepare_pack(workspace, run_id)
+            finally:
+                inventory = workspace.bindings
+                collections = workspace.store.collection_names()
+            execution = execute_access_benchmark(
+                workspace,
+                pack,
+                generation,
+                strategy=options.strategy,
+                lab=options.lab,
+                on_record=checkpoint,
+            )
+    except (Exception, KeyboardInterrupt) as error:
+        if not opened:
+            return _diagnostic("access_benchmark_workspace_failed", 2)
+        execution = AccessExecution(
+            execution.records,
+            True,
+            execution.interrupted or isinstance(error, KeyboardInterrupt),
+        )
+    try:
+        if provenance is None or inventory is None or not collections:
+            raise ValueError("access_benchmark_metadata_failed")
+        access_registry(inventory, run_id)
+    except Exception:
+        return _diagnostic("access_benchmark_preparation_failed", 2)
+    try:
+        final = report(provisional=False)
+        publish(final, config.report_dir / "access-benchmarks")
+    except (Exception, KeyboardInterrupt):
+        return _diagnostic("access_benchmark_report_write_failed", 2)
+    return final.exit_code, {
+        "code": "access_benchmark_runtime_failed"
+        if execution.runtime_failed
+        else "access_benchmark_incomplete"
+        if final.exit_code == 2
+        else "access_benchmark_complete",
+        "exit_code": final.exit_code,
+        "run_id": str(run_id),
+        "case_count": len(execution.records),
+        "strategy": options.strategy,
+        "provider_mode": generation.mode,
+    }
+
+
 def _offline(options: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     from app.evaluation.access_reports import validate_access_benchmark
     from app.evaluation.cost_reports import validate_cost_report
@@ -576,7 +706,7 @@ def main(argv: list[str] | None = None) -> int:
         choices=("shared_pre_filter", "tenant_collections", "lab_post_filter"),
     )
     parser.add_argument("--lab", action="store_true")
-    parser.add_argument("--pack", choices=("utility", "injection"))
+    parser.add_argument("--pack", choices=("utility", "injection", "access-control"))
     parser.add_argument(
         "--injection-profile", choices=("resistant", "obeying", "deny_all")
     )
@@ -649,6 +779,16 @@ def main(argv: list[str] | None = None) -> int:
                     if generation.mode == "local"
                     else options.injection_profile or "resistant"
                 )
+            elif options.pack == "access-control":
+                if any(
+                    getattr(options, field) is not None
+                    for field in (
+                        "injection_profile",
+                        "injection_trials",
+                        "qdrant_container",
+                    )
+                ):
+                    raise _ArgumentFailure
             elif (
                 options.injection_profile is not None
                 or options.injection_trials is not None
@@ -664,6 +804,8 @@ def main(argv: list[str] | None = None) -> int:
                 code, output = (
                     _offline(options)
                     if validating
+                    else _run_access(options, generation)
+                    if options.pack == "access-control"
                     else _run_injection(options, generation)
                     if options.pack == "injection"
                     else _run(options, generation)

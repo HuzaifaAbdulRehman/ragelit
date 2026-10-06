@@ -225,7 +225,25 @@ evidence. The original provider guard is unchanged.
 Query failures retain observed stages and restore application state. Checkpoints
 receive the latest raw record and interruption flags before another case starts.
 Current runner tests use local service doubles, not real embeddings or an LLM.
-The runtime access CLI, service-backed checks and full measurements remain pending.
+Service-backed checks and full real-model measurements remain pending.
+
+Run the owned access-control pack with the existing embedding/provider options:
+
+    uv run --frozen python -m app.evaluation.cli --pack access-control --embedding-root D:/replace/with/embedding-assets --provider fixture
+
+The driver uses the same pinned embeddings for ingestion and chat, validates the
+original pack, and writes immutable reports/access-checkpoints before each next
+case. Final artifacts go in reports/access-benchmarks. The utility-only storage
+option and injection-specific flags are rejected for this pack.
+
+Interrupted queries and checkpoint failures retain the latest raw record. A
+failure after preparation publishes a partial final report when its canonical
+inventory is available; incomplete preparation returns a redacted setup failure
+without inventing bindings. Provisional snapshots always have gate 2. A complete
+failing pack has gate 1, not a passing security result.
+
+Current runner and CLI tests use local service doubles and constructed
+observations. Service-backed checks and full measurements remain pending.
 
 The [injection benchmark artifact](../../backend/app/evaluation/security_reports.py)
 binds canonical injection-v1 cases and document hashes to benchmark provenance,
