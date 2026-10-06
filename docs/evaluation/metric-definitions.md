@@ -300,8 +300,16 @@ report. Differences are candidate minus reference, using 10,000 bootstrap
 resamples and seed 20261005. The intervals describe this authored cohort,
 not population risk or model attestation.
 
-The focused tests use constructed observations. Offline comparison CLI wiring
-and actual paired model measurements remain pending.
+The focused tests use constructed observations. Compare two original reports
+without models or services:
+
+    uv run --frozen python -m app.evaluation.cli --compare-access-benchmarks D:/reference/report.json D:/candidate/report.json
+    uv run --frozen python -m app.evaluation.cli --compare-injection-benchmarks D:/reference/report.json D:/candidate/report.json
+
+CLI exit 0 means comparison succeeded, not that either security pack passed.
+The comparison includes both source gates. Partial, provisional, mismatched or
+invalid source reports return exit 2. Commands neither mutate source artifacts
+nor rerun queries. Actual paired model measurements remain pending.
 
 ## Remaining measurements
 

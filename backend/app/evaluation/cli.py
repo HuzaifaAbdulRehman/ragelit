@@ -646,9 +646,35 @@ def _offline(options: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     from app.evaluation.access_reports import validate_access_benchmark
     from app.evaluation.cost_reports import validate_cost_report
     from app.evaluation.reports import compare_utility_reports, validate_utility_report
+    from app.evaluation.security_comparisons import (
+        compare_access_reports,
+        compare_injection_reports,
+    )
     from app.evaluation.security_reports import validate_injection_benchmark
 
     try:
+        if options.compare_access_benchmarks is not None:
+            first_access, second_access = options.compare_access_benchmarks
+            security_comparison = compare_access_reports(
+                validate_access_benchmark(first_access),
+                validate_access_benchmark(second_access),
+            )
+            return 0, {
+                "code": "security_comparison_complete",
+                "exit_code": 0,
+                "comparison": security_comparison.model_dump(mode="json"),
+            }
+        if options.compare_injection_benchmarks is not None:
+            first_injection, second_injection = options.compare_injection_benchmarks
+            security_comparison = compare_injection_reports(
+                validate_injection_benchmark(first_injection),
+                validate_injection_benchmark(second_injection),
+            )
+            return 0, {
+                "code": "security_comparison_complete",
+                "exit_code": 0,
+                "comparison": security_comparison.model_dump(mode="json"),
+            }
         if options.validate_access_benchmark is not None:
             access = validate_access_benchmark(options.validate_access_benchmark)
             return 0, {
@@ -724,6 +750,8 @@ def main(argv: list[str] | None = None) -> int:
     offline.add_argument("--validate-injection-benchmark", type=Path)
     offline.add_argument("--validate-access-benchmark", type=Path)
     offline.add_argument("--compare-reports", type=Path, nargs=2)
+    offline.add_argument("--compare-access-benchmarks", type=Path, nargs=2)
+    offline.add_argument("--compare-injection-benchmarks", type=Path, nargs=2)
     try:
         options = parser.parse_args(argv)
         validating = (
@@ -732,6 +760,8 @@ def main(argv: list[str] | None = None) -> int:
             or options.validate_injection_benchmark is not None
             or options.validate_access_benchmark is not None
             or options.compare_reports is not None
+            or options.compare_access_benchmarks is not None
+            or options.compare_injection_benchmarks is not None
         )
         if validating:
             if (
