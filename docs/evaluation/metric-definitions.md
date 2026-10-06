@@ -276,9 +276,32 @@ run_exit_code is 0 for a complete passing injection pack, 1 for a complete
 failing pack, or 2 for incomplete/provisional evidence. That pack gate does
 not complete the utility, access-control or release benchmark. Current unit
 and native CLI checks use constructed fixture observations. The owned capture
-driver is implemented, but its service-backed injection check, access-control
-capture and full real-model runs remain pending. Runner/CLI tests use local
+driver is implemented, but service-backed injection/access-control checks
+and full real-model runs remain pending. Runner/CLI tests use local
 doubles and constructed fixture observations.
+
+## Paired security comparisons
+
+The comparison helpers in security_comparisons.py replay both source reports
+before pairing logical cases. They require complete coverage, identical model,
+source, machine and service provenance, and different strategies. A completed
+security failure remains eligible; its original gate is retained.
+
+Access comparisons also match actual current/previous document hashes and all
+retained instance history. Lifecycle documents depend on their cohort nonce,
+so independently generated cohort IDs are not comparable. Use the same cohort
+namespace in separate owned workspaces. The runtime CLI cannot select that
+namespace yet. Workspace, actor, document and chunk UUIDs are not pairing keys.
+
+Injection comparisons require identical trial counts and provider profiles.
+Exposure differences pair every case at five boundaries; injection ASR pairs
+only evaluated attacks, with passing benign controls required by the source
+report. Differences are candidate minus reference, using 10,000 bootstrap
+resamples and seed 20261005. The intervals describe this authored cohort,
+not population risk or model attestation.
+
+The focused tests use constructed observations. Offline comparison CLI wiring
+and actual paired model measurements remain pending.
 
 ## Remaining measurements
 
