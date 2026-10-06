@@ -139,6 +139,7 @@ def _generation(options: argparse.Namespace) -> GenerationRecord:
 def _run(
     options: argparse.Namespace, generation: GenerationRecord
 ) -> tuple[int, dict[str, Any]]:
+    from app.audits.contracts import Terminal
     from app.audits.isolation_lab import LabPostFilterStore
     from app.audits.isolation_reports import IsolationStrategy
     from app.audits.seeding import FixtureCitingProvider, seed_workspace
@@ -242,7 +243,16 @@ def _run(
 
     def checkpoint(records: tuple[UtilityQueryRecord, ...]) -> None:
         nonlocal execution
-        execution = UtilityExecution(records, execution.runtime_failed, False)
+        execution = UtilityExecution(
+            records,
+            execution.runtime_failed
+            or any(
+                record.observation.terminal
+                not in {Terminal.ANSWERED, Terminal.ABSTAINED}
+                for record in records
+            ),
+            False,
+        )
         if provenance is None:
             raise ValueError("utility_metadata_failed")
         snapshot = build_utility_report(
@@ -251,6 +261,7 @@ def _run(
             records,
             strategy=strategy,
             collection_names=collections,
+            runtime_failed=execution.runtime_failed,
             provisional=True,
         )
         publish(snapshot, config.report_dir / "utility-checkpoints" / run_id.hex)

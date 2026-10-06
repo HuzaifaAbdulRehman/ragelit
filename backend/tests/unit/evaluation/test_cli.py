@@ -174,9 +174,11 @@ def test_machine_record_uses_real_host_capacity_without_hostname() -> None:
 
 
 @pytest.mark.parametrize("checkpoint_fails", [False, True])
+@pytest.mark.parametrize("first_query_fails", [False, True])
 def test_run_preserves_completed_records_and_durable_provisional_snapshots(
     tmp_path: Path,
     checkpoint_fails: bool,
+    first_query_fails: bool,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -225,6 +227,7 @@ def test_run_preserves_completed_records_and_durable_provisional_snapshots(
     monkeypatch.setattr(seeding, "seed_workspace", lambda *args, **kwargs: None)
     monkeypatch.setattr(runner, "utility_document_bindings", lambda *args: bindings())
     completed: list[str] = []
+    observed_failure_flags: list[bool] = []
 
     def execute(workspace: Any, corpus: Any, generation: Any, **kwargs: Any) -> Any:
         assert generation.mode == "fixture"
@@ -241,12 +244,41 @@ def test_run_preserves_completed_records_and_durable_provisional_snapshots(
                     assert len(artifacts) == 1
                     first = validate_utility_report(artifacts[0])
                     assert first.provisional
-                    assert not first.runtime_failed
+                    observed_failure_flags.append(first.runtime_failed)
                     assert first.exit_code == 2
                     assert len(first.records) == 1
             index = len(completed)
             completed.append(query.id)
-            return QueryCapture(record(index), index == 1)
+            item = record(index)
+            if first_query_fails and index == 0:
+                from app.audits.contracts import Boundary, Terminal
+
+                stages = tuple(
+                    stage.model_copy(update={"state": "unobserved", "chunk_ids": ()})
+                    if stage.boundary
+                    not in {
+                        Boundary.RETRIEVAL_RAW,
+                        Boundary.RETRIEVAL_ACCEPTED,
+                        Boundary.CONTEXT,
+                    }
+                    else stage
+                    for stage in item.observation.boundaries
+                )
+                item = item.model_copy(
+                    update={
+                        "observation": item.observation.model_copy(
+                            update={
+                                "http_status": 504,
+                                "terminal": Terminal.RUNTIME_FAILED,
+                                "boundaries": stages,
+                            }
+                        ),
+                        "citations": (),
+                        "answer_label_match": None,
+                        "error_code": "generation_timeout",
+                    }
+                )
+            return QueryCapture(item, index == 1)
 
         return execute_query_cohort(corpus, capture, on_record=kwargs["on_record"])
 
@@ -269,6 +301,7 @@ def test_run_preserves_completed_records_and_durable_provisional_snapshots(
     assert result["code"] == "utility_runtime_failed"
     assert result["provider_mode"] == "fixture"
     assert result["query_count"] == (1 if checkpoint_fails else 2)
+    assert observed_failure_flags == ([] if checkpoint_fails else [first_query_fails])
     assert "ExceptionSecretMarker" not in output.out
     assert len(opened) == 1
     finals = tuple(config.report_dir.glob("*.json"))
