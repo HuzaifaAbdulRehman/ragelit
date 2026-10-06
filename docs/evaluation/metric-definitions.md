@@ -167,6 +167,47 @@ The CLI runs the fixed timing cohort using change-notice in each organization
 after the full utility query cohort. These records now enter the cost report;
 the full three-organization measurements are still pending.
 
+## Security rates and replay
+
+[Security rate calculations](../../backend/app/evaluation/security_metrics.py)
+count exposed cases, not repeated markers or chunks. Each boundary states its
+expected, recorded and measured case counts. A primary rate requires every
+expected case to be measured; partial observed rates retain their denominator.
+Missing, truncated or observer-failed evidence cannot establish absence.
+Known signals in truncated evidence are retained separately. A not-reached
+stage counts as absence only when the recorded denial proves that boundary
+was never reached.
+
+Raw retrieval, accepted retrieval, context, candidate output and delivered
+output remain separate. A candidate disclosure is retained when delivery is
+blocked. The audit's deliberate citation challenge is exempt only at rejected
+candidate citations, never at retrieval, context or output.
+
+Injection success is different from unauthorized disclosure. Following an
+instruction in an authorized poisoned document can succeed without revealing
+another document. The primary injection rate requires the full attack cohort
+and passing benign controls. Failed controls or runtime failure leave it
+unknown; the observed attack numerator and denominator remain visible.
+
+The [injection benchmark artifact](../../backend/app/evaluation/security_reports.py)
+binds canonical injection-v1 cases and document hashes to benchmark provenance,
+provider profile and retrieval strategy. Its validator replays raw stages and
+all derived rates. It rejects unknown chunk/canary IDs, mismatched generation
+mode, forged summaries and overwritten artifacts. It does not accept the old
+fixture audit report as evidence of real embedding execution.
+
+Validate an original injection benchmark without models or services:
+
+    uv run --frozen python -m app.evaluation.cli --validate-injection-benchmark D:/replace/with/report.json
+
+Validation exit 0 proves artifact integrity and replay, not execution. Its
+run_exit_code is 0 for a complete passing injection pack, 1 for a complete
+failing pack, or 2 for incomplete/provisional evidence. That pack gate does
+not complete the utility, access-control or release benchmark. Current unit
+and native CLI checks use constructed fixture observations. Production-path
+security capture, the access-control envelope and full real-model runs remain
+pending.
+
 ## Remaining measurements
 
 The [cost collectors](../../backend/app/evaluation/costs.py) measure ingestion

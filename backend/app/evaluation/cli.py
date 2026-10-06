@@ -377,8 +377,19 @@ def _run(
 def _offline(options: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     from app.evaluation.cost_reports import validate_cost_report
     from app.evaluation.reports import compare_utility_reports, validate_utility_report
+    from app.evaluation.security_reports import validate_injection_benchmark
 
     try:
+        if options.validate_injection_benchmark is not None:
+            security = validate_injection_benchmark(
+                options.validate_injection_benchmark
+            )
+            return 0, {
+                "code": "injection_benchmark_artifact_valid",
+                "exit_code": 0,
+                "run_exit_code": security.exit_code,
+                "coverage_complete": security.coverage_complete,
+            }
         if options.validate_cost_report is not None:
             costs = validate_cost_report(options.validate_cost_report)
             return 0, {
@@ -428,12 +439,14 @@ def main(argv: list[str] | None = None) -> int:
     offline = parser.add_mutually_exclusive_group()
     offline.add_argument("--validate-report", type=Path)
     offline.add_argument("--validate-cost-report", type=Path)
+    offline.add_argument("--validate-injection-benchmark", type=Path)
     offline.add_argument("--compare-reports", type=Path, nargs=2)
     try:
         options = parser.parse_args(argv)
         validating = (
             options.validate_report is not None
             or options.validate_cost_report is not None
+            or options.validate_injection_benchmark is not None
             or options.compare_reports is not None
         )
         if validating:
