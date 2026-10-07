@@ -65,6 +65,10 @@ The rerun scanned 96 Python and 170 npm packages and reported no issues. A
 fresh temporary frontend install, Biome and TypeScript check, and production
 build also exited 0. Container scanning remains open.
 
+`docker compose config --quiet` exited 0 and resolved the pinned PostgreSQL
+18-alpine and Qdrant 1.15.4 images. The local Docker daemon was unavailable,
+so no image scan or service-backed container check is claimed.
+
 ## Full real-model baseline
 
 Run `8b247148-ce0f-4751-8e73-2264cd5fb582` used clean source `93cc651`, the pinned
