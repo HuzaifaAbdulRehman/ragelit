@@ -69,6 +69,28 @@ build also exited 0. Container scanning remains open.
 18-alpine and Qdrant 1.15.4 images. The local Docker daemon was unavailable,
 so no image scan or service-backed container check is claimed.
 
+## Current local gate
+
+The first full verification attempt reached the database integration stage but
+the freshly created PostgreSQL service did not contain the test role expected by
+the suite. After adding that role inside RAGelit's own container, the targeted
+integration, API and migration command completed with 251 passed and 4 skipped
+in 2:13:45. This was an environment correction; no application code changed.
+The earlier backend unit stage completed with 782 passed and 3 skipped in 385.18
+seconds.
+
+The audit export produced by the same verification run passed the native report
+validator with exit 0. The clean browser clone then ran the complete Playwright
+journey: 57 passed in 10.8 minutes with one worker. That run covered sign-in,
+tenant switching, document grants and revocation, hostile names and model text,
+retrieval citations, audit jobs, and the real-store product journey. It used
+fixture generation paths and did not load a language model.
+
+These results are separate from a single end-to-end `scripts/verify.ps1` pass:
+the first pass stopped at the missing PostgreSQL role, and rerunning it would
+repeat the two-hour integration stage unnecessarily. The targeted rerun is the
+authoritative current evidence for that stage.
+
 ## Full real-model baseline
 
 Run `8b247148-ce0f-4751-8e73-2264cd5fb582` used clean source `93cc651`, the pinned
@@ -107,10 +129,12 @@ verification, workspace identity, report replay, provenance, access boundaries
 and audit jobs. It found no new implementation defect requiring a fix. Earlier
 focused test logs were inspected, not treated as a current-head full-suite pass.
 
-Still required: the current-head full milestone gate, remaining security/container
-scan evidence, Linux CI setup/demo, the vulnerable-to-fixed demo and final release
-documentation. Real-model generation/security quality and revocation measurements
-need suitable hardware. A local Linux setup smoke is separate from Linux CI.
+Still required: current injection and isolation export directories from a
+release run, remaining security/container scan evidence, Linux CI setup/demo,
+the vulnerable-to-fixed demo and final release documentation. Real-model
+generation/security quality and revocation measurements need suitable hardware.
+A local Linux setup smoke is separate from Linux CI. The current evidence is a
+well-tested local MVP, not a completed v0.1 release claim.
 
 Original reports, receipts, loaded-model proofs, logs and process leases remain
 in ignored local storage under
