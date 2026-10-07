@@ -38,13 +38,16 @@ listed revisions; they do not establish a current-head release pass.
   resistance result is available.
 - [Isolation comparison](../verification/2026-10-05-isolation-comparison.md)
   records the three real 51-case target journeys. The successful CLI export
-  cohort and current-head Linux gate remain pending.
-  The sleep-interrupted CLI report stays inconclusive.
+  cohort in that historical record was interrupted, and its report stays
+  inconclusive. The newer [local release checkpoint](../verification/2026-10-07-local-release-checkpoint.md)
+  records a fresh three-strategy export whose six reports and receipts validate.
 - [Local release checkpoint](../verification/2026-10-07-local-release-checkpoint.md)
   records the clean Windows clone's complete 51-case safe audit, frontend and
-  static checks, a local Linux setup smoke and one independent integration
-  review. The review found no new implementation defect requiring a fix; it
-  did not approve a completed release. Real-generation coverage remains open.
+  static checks, the browser gate, fresh injection/isolation artifacts, a
+  vulnerable-to-fixed demo and one independent integration review. It also
+  records Docker Scout findings in the pinned service images. The review found
+  no new implementation defect requiring a fix; it did not approve a completed
+  release. Real-generation coverage remains open.
 
 Passing a single-report integrity check does not change its recorded audit
 outcome. A checksum is not a signature or proof against an operator fabricating
@@ -62,10 +65,10 @@ storage, collection count and revocation delay. Paired confidence intervals
 must be reported where appropriate. Deterministic providers cannot supply
 real-model quality or resistance claims.
 
-The remaining clean-clone demo, Linux CI and current-head full release gates
-are pending. The [CI workflow](../../.github/workflows/ci.yml) defines
-secret scanning and offline locked-dependency auditing; configured gates are
-not evidence that the release passed them.
+The remaining current-head full release gate, container remediation, Linux CI
+and real-model measurements are pending. The [CI workflow](../../.github/workflows/ci.yml)
+defines secret scanning and offline locked-dependency auditing; configured gates
+are not evidence that the release passed them.
 
 Give audit bootstrap credentials only to the operator worker; ordinary requests
 need the non-owner application database URL. Use local services as documented.

@@ -24,6 +24,12 @@ and the three-strategy release pack was not produced.
 The successful CLI export check and current-head Linux release gate are still
 pending. The separate lab opt-in subprocess check passed in 14.29 seconds.
 
+The later [2026-10-07 local checkpoint](2026-10-07-local-release-checkpoint.md)
+supersedes the export-status line above for local evidence: a fresh
+three-strategy report set completed and its six reports and receipts passed the
+native validator. The historical interrupted report remains inconclusive, and
+no real-model quality or security claim follows.
+
 ## Run the checks
 
 Start disposable PostgreSQL and Qdrant services as described in the README.
