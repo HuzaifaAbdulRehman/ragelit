@@ -76,6 +76,12 @@ high findings across 40 packages. Scout recommends a newer Debian base for the
 Qdrant image, but that requires a compatible Qdrant image update and a fresh
 service-backed gate. No image pin was changed from this scan alone.
 
+Candidate registry scans did not produce a clean replacement: PostgreSQL
+`18.6-alpine3.24` still reported 2 critical and 23 high findings, while Qdrant
+`v1.19.1` reported 7 critical and 26 high findings. The compose pins remain
+unchanged until an image update is paired with compatibility tests and a new
+service-backed verification run.
+
 ## Current local gate
 
 The first full verification attempt reached the database integration stage but
