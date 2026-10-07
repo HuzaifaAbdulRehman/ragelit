@@ -149,6 +149,11 @@ records a clean Windows clone's complete 51-case safe audit, static checks,
 frontend build and original report validation. A bounded Linux frozen-install
 and CLI smoke also passed; it is not Linux CI or a full release-gate result.
 
+The same checkpoint records 57 passing Playwright journeys and a fresh,
+three-profile deterministic injection export whose reports and receipts validate
+offline. These checks cover application behavior and the audit harness. They do
+not establish real-model answer quality or real-model injection resistance.
+
 The full 87-query local baseline measured retrieval, but all generation requests
 timed out at the unchanged deadline. Answer/citation quality and measured
 revocation delay remain unknown. No real-model injection-resistance claim follows
