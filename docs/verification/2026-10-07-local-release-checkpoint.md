@@ -100,6 +100,14 @@ receipts were recovered into a fresh destination and passed the native isolation
 validator with exit 0. This is deterministic harness evidence, not a
 real-model quality or security result.
 
+A fresh access-control demo also completed the safe, vulnerable-lab and
+deny-all profiles over 51 cases each. The run IDs were
+`8ef5b8fa-5493-45ba-8cce-5e75af56afdf` (safe),
+`623d1b35-0ea8-4b7a-864a-a435802471d7` (vulnerable) and
+`c3d1deb7-2bbe-471c-a0da-3920fa5d579b` (deny-all); their expected exits were
+0/1/1. The six saved artifacts passed the native validator with exit 0. This is
+the local vulnerable-to-fixed demonstration described in the operations guide.
+
 These results are separate from a single end-to-end `scripts/verify.ps1` pass:
 the first pass stopped at the missing PostgreSQL role, and rerunning it would
 repeat the two-hour integration stage unnecessarily. The targeted rerun is the

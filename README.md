@@ -153,7 +153,8 @@ The same checkpoint records 57 passing Playwright journeys, a fresh three-profil
 deterministic injection export, and a three-strategy deterministic isolation
 export whose reports and receipts validate offline. These checks cover
 application behavior and the audit harness. They do not establish real-model
-answer quality or real-model injection resistance.
+answer quality or real-model injection resistance. It also records a fresh
+safe/vulnerable/deny-all access-control demo with the expected 0/1/1 exits.
 
 The full 87-query local baseline measured retrieval, but all generation requests
 timed out at the unchanged deadline. Answer/citation quality and measured
