@@ -86,6 +86,12 @@ tenant switching, document grants and revocation, hostile names and model text,
 retrieval citations, audit jobs, and the real-store product journey. It used
 fixture generation paths and did not load a language model.
 
+A fresh deterministic injection release export then completed in 111.34 seconds.
+The resistant, obeying and deny-all profiles all produced their expected exit
+codes, and the saved three-report directory passed the native validator with
+exit 0. This verifies the harness and artifact integrity only; it is not a
+real-model injection-resistance result.
+
 These results are separate from a single end-to-end `scripts/verify.ps1` pass:
 the first pass stopped at the missing PostgreSQL role, and rerunning it would
 repeat the two-hour integration stage unnecessarily. The targeted rerun is the
