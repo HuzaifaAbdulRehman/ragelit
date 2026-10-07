@@ -1,8 +1,8 @@
 # Local release checkpoint
 
 Checks ran on 6 October UTC (7 October in Pakistan). This is progress evidence,
-not a completed v0.1 release. GitHub delivery remains on hold; repository
-visibility was left unchanged at the user's request.
+not a completed v0.1 release. The working branch is public on GitHub and matches
+the local checkpoint; `main` is unchanged.
 
 ## Clean Windows setup
 
@@ -53,7 +53,17 @@ records until the next fixture reset.
 A local, redacted Gitleaks branch-history scan covered changes from `58e7a6f`
 through `93acaab`: 63 commits scanned, about 1.25 MB, exit 0, no detected leaks.
 The log and empty JSON report are retained in the local ledger directory.
-This does not replace dependency/container scans or prove arbitrary files safe.
+This does not prove arbitrary files safe.
+
+## Dependency audit
+
+The pinned OSV-Scanner 2.6.0 Windows binary matched its published SHA-256. The
+repository's dependency-audit tests ran 15 tests with 10 platform cases skipped.
+The first offline scan found `source-map-js` 1.2.1 in the frontend lockfile;
+the lockfile now uses the registry's 1.2.2 release, which fixes the advisory.
+The rerun scanned 96 Python and 170 npm packages and reported no issues. A
+fresh temporary frontend install, Biome and TypeScript check, and production
+build also exited 0. Container scanning remains open.
 
 ## Full real-model baseline
 
