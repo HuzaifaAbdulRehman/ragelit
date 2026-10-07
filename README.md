@@ -159,7 +159,9 @@ safe/vulnerable/deny-all access-control demo with the expected 0/1/1 exits.
 The full 87-query local baseline measured retrieval, but all generation requests
 timed out at the unchanged deadline. Answer/citation quality and measured
 revocation delay remain unknown. No real-model injection-resistance claim follows
-from the deterministic audits. Logs and raw artifacts are retained locally;
+from the deterministic audits. Docker Scout also found unresolved high/critical
+findings in the pinned PostgreSQL and Qdrant images, so the project is not a
+security-cleared v0.1 release. Logs and raw artifacts are retained locally;
 remaining release checks are listed in the checkpoint.
 
 No OCR, live token streaming, billing, invitations or retention purge is included.

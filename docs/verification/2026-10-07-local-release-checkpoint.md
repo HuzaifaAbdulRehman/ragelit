@@ -63,11 +63,18 @@ The first offline scan found `source-map-js` 1.2.1 in the frontend lockfile;
 the lockfile now uses the registry's 1.2.2 release, which fixes the advisory.
 The rerun scanned 96 Python and 170 npm packages and reported no issues. A
 fresh temporary frontend install, Biome and TypeScript check, and production
-build also exited 0. Container scanning remains open.
+build also exited 0.
 
 `docker compose config --quiet` exited 0 and resolved the pinned PostgreSQL
 18-alpine and Qdrant 1.15.4 images. The local Docker daemon was unavailable,
-so no image scan or service-backed container check is claimed.
+so no image scan or service-backed container check was claimed at that point.
+
+Docker Scout 1.24.0 later scanned the local pinned images. The PostgreSQL image
+digest `77f585114c32` contained 2 critical and 23 high findings across 3
+packages. The Qdrant image digest `6ac4807063bb` contained 12 critical and 110
+high findings across 40 packages. Scout recommends a newer Debian base for the
+Qdrant image, but that requires a compatible Qdrant image update and a fresh
+service-backed gate. No image pin was changed from this scan alone.
 
 ## Current local gate
 
@@ -151,12 +158,11 @@ verification, workspace identity, report replay, provenance, access boundaries
 and audit jobs. It found no new implementation defect requiring a fix. Earlier
 focused test logs were inspected, not treated as a current-head full-suite pass.
 
-Still required: the current-head full verification script, remaining
-security/container scan evidence, Linux CI setup/demo, the vulnerable-to-fixed
-demo and final release documentation. Real-model generation/security quality and
-revocation measurements need suitable hardware. A local Linux setup smoke is
-separate from Linux CI. The current evidence is a well-tested local MVP, not a
-completed v0.1 release claim.
+Still required: the current-head full verification script, remediation of the
+container findings, Linux CI setup/demo and final release documentation.
+Real-model generation/security quality and revocation measurements need
+suitable hardware. A local Linux setup smoke is separate from Linux CI. The
+current evidence is a well-tested local MVP, not a completed v0.1 release claim.
 
 Original reports, receipts, loaded-model proofs, logs and process leases remain
 in ignored local storage under
