@@ -92,6 +92,14 @@ codes, and the saved three-report directory passed the native validator with
 exit 0. This verifies the harness and artifact integrity only; it is not a
 real-model injection-resistance result.
 
+The three deterministic isolation strategies also completed in 1251.09 seconds.
+All strategy assertions and the temporary release-directory checks passed. The
+test process then stopped at its final destination assertion because this run
+had pre-created the configured export directory. The six generated reports and
+receipts were recovered into a fresh destination and passed the native isolation
+validator with exit 0. This is deterministic harness evidence, not a
+real-model quality or security result.
+
 These results are separate from a single end-to-end `scripts/verify.ps1` pass:
 the first pass stopped at the missing PostgreSQL role, and rerunning it would
 repeat the two-hour integration stage unnecessarily. The targeted rerun is the
@@ -135,12 +143,12 @@ verification, workspace identity, report replay, provenance, access boundaries
 and audit jobs. It found no new implementation defect requiring a fix. Earlier
 focused test logs were inspected, not treated as a current-head full-suite pass.
 
-Still required: current injection and isolation export directories from a
-release run, remaining security/container scan evidence, Linux CI setup/demo,
-the vulnerable-to-fixed demo and final release documentation. Real-model
-generation/security quality and revocation measurements need suitable hardware.
-A local Linux setup smoke is separate from Linux CI. The current evidence is a
-well-tested local MVP, not a completed v0.1 release claim.
+Still required: the current-head full verification script, remaining
+security/container scan evidence, Linux CI setup/demo, the vulnerable-to-fixed
+demo and final release documentation. Real-model generation/security quality and
+revocation measurements need suitable hardware. A local Linux setup smoke is
+separate from Linux CI. The current evidence is a well-tested local MVP, not a
+completed v0.1 release claim.
 
 Original reports, receipts, loaded-model proofs, logs and process leases remain
 in ignored local storage under
