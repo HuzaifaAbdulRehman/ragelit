@@ -266,16 +266,20 @@ and only claims supported by committed evidence.
 
 ### Task group M5.1: Isolation strategies
 
-- [ ] Implement shared-collection payload pre-filtering as the production
+- [x] Implement shared-collection payload pre-filtering as the production
   strategy.
-- [ ] Implement collection-per-tenant isolation behind the same store contract.
-- [ ] Implement retrieve-then-filter only inside the lab package with a runtime
+- [x] Implement collection-per-tenant isolation behind the same store contract.
+- [x] Implement retrieve-then-filter only inside the lab package with a runtime
   guard that rejects production configuration.
-- [ ] Run the same functional and audit contract suite against each strategy.
+- [x] Run the same functional and audit contract suite against each strategy.
+
+The 7 October local checkpoint records the three-strategy functional run and
+validated report set. The observations use deterministic fixtures and do not
+replace the real-model benchmark.
 
 ### Task group M5.2: Reproducible benchmark
 
-- [ ] Pin the synthetic dataset, embedding model, sparse model, reranker, and
+- [x] Pin the synthetic dataset, embedding model, sparse model, reranker, and
   generation settings.
 - [ ] Measure unauthorized retrieval, context exposure, output disclosure,
   injection success, Recall@10, MRR@10, citation correctness, p50/p95 latency,
@@ -287,7 +291,7 @@ and only claims supported by committed evidence.
 
 ### Task group M5.3: Hardening and release evidence
 
-- [ ] Run dependency, secret, static, and container scans.
+- [x] Run dependency, secret, static, and container scans.
 - [ ] Test malformed uploads, oversized requests, concurrency, restart recovery,
   and provider timeouts.
 - [ ] Run setup and the demo from a clean Windows clone and a Linux CI runner.
@@ -296,15 +300,22 @@ and only claims supported by committed evidence.
 
 ### Task group M5.4: Release documentation
 
-- [ ] Write a short README with architecture, setup, demo, evidence, limits,
+- [x] Write a short README with architecture, setup, demo, evidence, limits,
   attribution, and screenshots.
-- [ ] Publish the threat model, control matrix, API schema, benchmark method,
+- [x] Publish the threat model, control matrix, API schema, benchmark method,
   and raw result format.
-- [ ] Record a demo showing a vulnerable run, first exposed stage, control fix,
+- [x] Record a demo showing a vulnerable run, first exposed stage, control fix,
   and passing rerun.
-- [ ] Draft resume and research wording using only reproduced measurements.
+- [x] Draft resume and research wording using only reproduced measurements.
 - [ ] Keep the repository private. Changing visibility is a separate future
   decision that requires an explicit request.
+
+The repository is public by explicit user decision. The private-delivery item is
+therefore intentionally open for this branch, not silently treated as complete.
+
+The dependency and secret scans are clean. Docker Scout ran against both pinned
+service images and found unresolved critical/high findings; remediation remains
+open even though the scan itself is complete.
 
 Gate: v0.1 starts from a clean clone, runs its audit without private services,
 and reproduces every number used in public prose.
