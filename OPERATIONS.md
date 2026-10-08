@@ -24,6 +24,10 @@ Install Docker Desktop with Compose, Python 3.12 or 3.13,
 Copy `.env.example` to `.env` in the repository root. The example credentials
 are for local development only.
 
+These defaults target fresh Qdrant 1.19.2 storage with Python client 1.19.1.
+For an existing installation, read [Existing Qdrant data](#existing-qdrant-data)
+before running Compose.
+
 ```powershell
 Copy-Item .env.example .env
 docker compose up -d postgres qdrant
@@ -51,6 +55,23 @@ npm run dev
 
 Open <http://localhost:5173/login>. API documentation is at
 <http://localhost:8000/docs>.
+
+## Existing Qdrant data
+
+Do not start the 1.19.2 image directly against a 1.15.x data volume. Qdrant
+requires each intermediate minor version, including for a single node: 1.15
+to 1.16, then 1.17, 1.18 and 1.19. Use the latest patch of each intermediate
+minor version and follow the [official upgrade procedure](https://qdrant.tech/documentation/upgrades/).
+
+Back up existing data and test restoration before maintenance. Stop application
+and worker traffic while upgrading, check each step, then resume with the
+matching client. Qdrant does not support downgrading migrated storage; changing
+the image pin back is not a data rollback. Restore a pre-upgrade backup instead.
+Do not delete the existing volume to bypass migration.
+
+The image/client update changes repository defaults only. It does not restart
+services, migrate your volumes or establish compatibility with an older running
+server. Fresh-data tests are separate from an existing-data migration test.
 
 ## Use the portal
 
@@ -162,7 +183,7 @@ these test containers:
 ```console
 docker compose stop postgres qdrant
 docker run --rm --name ragelit-postgres-test -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:5432:5432 -d postgres:18-alpine
-docker run --rm --name ragelit-qdrant-test -p 127.0.0.1:6333:6333 -d qdrant/qdrant:v1.15.4
+docker run --rm --name ragelit-qdrant-test -p 127.0.0.1:6333:6333 -d qdrant/qdrant:v1.19.2@sha256:b7b0444c4c351c970b98e90a6f89c2ee4287c65b44e52b4cb503fa5b2aa927ad
 ```
 
 Run `powershell -File scripts/verify.ps1` on Windows or

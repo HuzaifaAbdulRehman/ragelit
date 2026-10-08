@@ -1,6 +1,6 @@
 # Container image triage 8 October 2026
 
-This is a partial reachability review, not a clean image scan or release sign-off. Docker Scout 1.24.0 inspected the existing linux/amd64 images. No package was suppressed, upgraded or removed.
+This is a partial reachability review, not a clean image scan or release sign-off. Docker Scout 1.24.0 inspected the existing linux/amd64 images. The initial scans did not suppress, upgrade or remove packages. The later repository-default update is recorded below.
 
 | Image and scope | Observed findings |
 | --- | --- |
@@ -30,7 +30,9 @@ Run `38ccebcf-61d4-40a8-b363-91f6ef7baaa0` completed all 51 cases with complete 
 
 ## Next action
 
-Keep the current compose pins until the candidate completes the remaining compatibility checks and its findings are reviewed. Prioritize the linked runtime libraries, then review build-inventory findings against each advisory's prerequisites. Do not replace missing reachability evidence with a blanket scanner exclusion or call these images production-cleared.
+After this initial triage, the user approved updating fresh-data defaults to the exact 1.19.2 image above and matching Python client 1.19.1. Compose and CI now select that pair; the full updated compatibility gate is still pending. Running services and existing volumes were not changed. The [operator warning](../../OPERATIONS.md#existing-qdrant-data) explains why an older data volume must not be upgraded directly or downgraded afterward.
+
+Prioritize the linked runtime libraries, then review build-inventory findings against each advisory's prerequisites. Do not replace missing reachability evidence with a blanket scanner exclusion or call these images production-cleared.
 
 ## Reproduce the scoped scan
 

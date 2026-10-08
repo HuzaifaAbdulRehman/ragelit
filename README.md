@@ -84,6 +84,9 @@ chat-completions-compatible server, not a provider login discovered automaticall
 ## Quick start
 
 Requires Docker Desktop/Compose, Python 3.12 or 3.13, uv, and Node.js 22 with npm.
+These defaults use Qdrant 1.19.2 with client 1.19.1. If you already have Qdrant
+data from an older version, read the [upgrade warning](OPERATIONS.md#existing-qdrant-data)
+before starting services. The commands below assume fresh data.
 From the repository root on Windows:
 
 ```powershell
