@@ -296,3 +296,22 @@ Its exact-image critical/high scan reports 2 critical and 22 high findings;
 the zlib advisory is absent, but gosu and libxml2 findings remain.
 Container-security disposition, real-model generation/security and revocation
 measurements, and v0.1 sign-off remain open.
+
+## Hardening coverage audit (9 October)
+
+The inspected assertions and verification script match the passing main revision
+`e6465240f9a107907b13930adfd125248876d74b`. Its CI run still reports completed
+success. No unchanged suite was rerun for this audit.
+
+| Requirement | Existing test evidence | Limit |
+| --- | --- | --- |
+| Malformed uploads | `test_malformed_docx_is_rejected` in `backend/tests/unit/documents/test_processing.py`; invalid-content ingestion asserts zero active points. | Synthetic malformed inputs, not a parser fuzzing campaign. |
+| Oversized requests | `test_invalid_upload_has_no_stored_file` in `backend/tests/api/test_documents.py` checks HTTP 413 and removal of partial uploads. | Configured document-upload limit, not every HTTP body type. |
+| Concurrency | `test_concurrent_owner_changes_keep_one_active_owner` in `backend/tests/api/test_members.py`; two audit workers cannot execute concurrently in `backend/tests/integration/audit_jobs/test_claims.py`. | Specific ownership and worker-lock races, not load testing. |
+| Recovery | Expired audit leases require explicit confirmation; superseded ingestion claims cannot activate points. The POSIX worker test sends SIGTERM and checks child reaping. | Lease and shutdown tests do not prove a full process restart-and-recovery exercise. |
+| Provider timeouts | `test_transport_timeout_has_stable_timeout_code` in `backend/tests/unit/chat/test_provider.py` checks HTTP 504, the stable error code and redaction of transport details. | Injected transport timeout, not successful real-model generation. |
+
+The combined hardening checkbox stays open for the unverified restart exercise.
+The PostgreSQL candidate still needs application compatibility evidence; the
+passing main gate used the existing database image. Container disposition and
+the full real-model measurement matrix remain separate release requirements.

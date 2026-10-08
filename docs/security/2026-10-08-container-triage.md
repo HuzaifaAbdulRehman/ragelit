@@ -41,6 +41,13 @@ Qdrant's startup script launches its Rust binary. Its dynamic library listing in
 
 The UI inventory establishes package versions, not executable reachability. These assessments are not approved risk acceptance, scanner suppressions or a completed container-security gate. The other PostgreSQL Go findings still require their own advisory-level review.
 
+On 9 October, the [gosu release page](https://github.com/tianon/gosu/releases/tag/1.19)
+still identified 1.19 as the latest release, built with Go 1.24.6. Its
+[security policy](https://github.com/tianon/gosu/blob/1.19/SECURITY.md) calls for
+`govulncheck` reachability analysis rather than rebuilding for unused Go APIs.
+That analysis has not been run on the inspected binary. The maintainer policy
+does not, by itself, clear the 23 scanner findings or approve a release exception.
+
 ## Disposable 1.19.2 compatibility check
 
 [Qdrant 1.19.2](https://github.com/qdrant/qdrant/releases/tag/v1.19.2), published on 5 October, was tested at digest `sha256:b7b0444c4c351c970b98e90a6f89c2ee4287c65b44e52b4cb503fa5b2aa927ad`. The native safe audit ran against separate loopback-only Qdrant and PostgreSQL containers with ephemeral storage. It used clean source `a4d6f9112eba16979e8faff62b8aeea6e328d430`, deterministic embeddings and fixture generation, not a language model.

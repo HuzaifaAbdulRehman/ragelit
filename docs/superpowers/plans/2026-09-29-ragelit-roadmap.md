@@ -298,6 +298,12 @@ replace the real-model benchmark.
 - [ ] Verify tracked files, license notices, migrations, example configuration,
   and absence of secrets.
 
+The [9 October coverage audit](../../verification/2026-10-07-local-release-checkpoint.md#hardening-coverage-audit-9-october)
+maps existing malformed-upload, size-limit, concurrency and timeout assertions
+to the passing main revision. Recovery has lease and shutdown coverage; a full
+worker restart-and-recovery exercise is still unverified. The combined checkbox
+remains open rather than treating those narrower tests as a full release pass.
+
 ### Task group M5.4: Release documentation
 
 - [x] Write a short README with architecture, setup, demo, evidence, limits,
