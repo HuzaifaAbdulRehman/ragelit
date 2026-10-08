@@ -257,6 +257,13 @@ container-security clearance.
 
 ## Review and remaining work
 
+The container triage now records advisory-level follow-up for the exact images.
+Offline, read-only metadata inspection confirmed the Qdrant UI inventory and
+library versions, distinguished Node execution from browser assets, and found
+Alpine's zlib 1.3.2-r1 remediation target for PostgreSQL. No image was rebuilt or
+service changed. Unverified runtime paths and the container release gate remain
+open; the follow-up is not a risk-acceptance decision.
+
 One independent read-only review covered `58e7a6f..8b7d3aa`, including asset
 verification, workspace identity, report replay, provenance, access boundaries
 and audit jobs. It found no new implementation defect requiring a fix. Earlier
