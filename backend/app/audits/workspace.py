@@ -37,6 +37,7 @@ from app.db.base import Base
 from app.db.session import build_session_factory
 from app.documents.models import DocumentVersion
 from app.main import create_app
+from app.retrieval.embeddings import EmbeddingProvider
 from app.retrieval.store import QdrantChunkStore
 
 _NAME = re.compile(r"ragelit_audit_[a-z0-9_]{1,32}\Z")
@@ -94,15 +95,22 @@ def _guard_path(path: Path, root: Path) -> None:
 
 class AuditConfiguration(AuditModel):
     environment: Literal["local", "test"]
+    vector_strategy: Literal["shared_pre_filter", "tenant_collections"] = (
+        "shared_pre_filter"
+    )
     database_admin_url: SecretStr = Field(repr=False)
     qdrant_url: str
     root: Path
     application_password: SecretStr = Field(repr=False, min_length=16)
     fixture_password: SecretStr = Field(repr=False, min_length=16)
     qdrant_timeout_seconds: int = Field(default=30, ge=1, le=30)
+    embedding_fingerprint: Checksum | None = None
+    embedding_dimension: int = Field(default=64, strict=True, ge=1, le=4096)
 
     @model_validator(mode="after")
     def guard_targets(self) -> Self:
+        if self.embedding_fingerprint is None and self.embedding_dimension != 64:
+            raise AuditWorkspaceError("invalid_audit_embedding_configuration")
         database = make_url(self.database_admin_url.get_secret_value())
         if (
             database.drivername != "postgresql+psycopg"
@@ -161,19 +169,23 @@ class AuditConfiguration(AuditModel):
     @property
     def config_hash(self) -> str:
         endpoint = urlsplit(self.qdrant_url)
-        return _hash(
-            {
-                "environment": self.environment,
-                "database": self.name,
-                "database_host": self.admin_url.host,
-                "database_port": self.admin_url.port or 5432,
-                "qdrant_host": endpoint.hostname,
-                "qdrant_port": endpoint.port,
-                "qdrant_timeout_seconds": self.qdrant_timeout_seconds,
-                "collection": self.name,
-                "root": str(self.root.resolve()),
-            }
-        )
+        identity = {
+            "environment": self.environment,
+            "database": self.name,
+            "database_host": self.admin_url.host,
+            "database_port": self.admin_url.port or 5432,
+            "qdrant_host": endpoint.hostname,
+            "qdrant_port": endpoint.port,
+            "qdrant_timeout_seconds": self.qdrant_timeout_seconds,
+            "collection": self.name,
+            "root": str(self.root.resolve()),
+        }
+        if self.vector_strategy != "shared_pre_filter":
+            identity["vector_strategy"] = self.vector_strategy
+        if self.embedding_fingerprint is not None:
+            identity["embedding_fingerprint"] = self.embedding_fingerprint
+            identity["embedding_dimension"] = self.embedding_dimension
+        return _hash(identity)
 
     @property
     def workspace_id(self) -> UUID:
@@ -238,9 +250,28 @@ class AuditWorkspace:
     settings: Settings
     client: TestClient
 
-    def __init__(self, config: AuditConfiguration, template: FixtureTemplate) -> None:
+    def __init__(
+        self,
+        config: AuditConfiguration,
+        template: FixtureTemplate,
+        *,
+        embeddings: EmbeddingProvider | None = None,
+    ) -> None:
+        config = AuditConfiguration.model_validate(config.model_dump())
+        if (
+            (embeddings is None) != (config.embedding_fingerprint is None)
+            or embeddings is not None
+            and (
+                getattr(embeddings, "fingerprint", None) != config.embedding_fingerprint
+                or type(embeddings.dimension) is not int
+                or embeddings.dimension != config.embedding_dimension
+            )
+        ):
+            raise AuditWorkspaceError("audit_embedding_mismatch")
         self.config, self.template = config, template
-        self.embeddings = FixtureEmbeddings()
+        self.embeddings: EmbeddingProvider = (
+            embeddings if embeddings is not None else FixtureEmbeddings()
+        )
         self._server_engine: Engine | None = None
         self._lock: Connection | None = None
         self._admin_engine: Engine | None = None
@@ -259,6 +290,30 @@ class AuditWorkspace:
         if self._admin_engine is None:
             raise AuditWorkspaceError("audit_workspace_not_open")
         return self._admin_engine
+
+    def _make_store(self) -> QdrantChunkStore:
+        assert self._vector_client is not None
+        if self.config.vector_strategy == "tenant_collections":
+            from app.audits.isolation_store import TenantCollectionStore
+
+            return TenantCollectionStore(
+                self._vector_client,
+                self.config,
+                dimension=self.embeddings.dimension,
+                organizations=lambda: tuple(self.bindings.organizations.values()),
+            )
+        return QdrantChunkStore(
+            self._vector_client, self.config.name, dimension=self.embeddings.dimension
+        )
+
+    def _namespace_names(self) -> set[str]:
+        assert self._vector_client is not None
+        return {
+            item.name
+            for item in self._vector_client.get_collections().collections
+            if item.name == self.config.name
+            or item.name.startswith(f"{self.config.name}_tenant_")
+        }
 
     def __enter__(self) -> Self:
         self.config.validate_paths()
@@ -299,11 +354,7 @@ class AuditWorkspace:
                 if _MARKER not in inspect(self.admin_engine).get_table_names():
                     raise AuditWorkspaceError("unowned_audit_workspace")
                 self._load()
-            self.store = QdrantChunkStore(
-                self._vector_client,
-                self.config.name,
-                dimension=FixtureEmbeddings.dimension,
-            )
+            self.store = self._make_store()
             self.validate_owned()
             self._application_engine = create_engine(
                 self.config.application_url, hide_parameters=True
@@ -335,7 +386,7 @@ class AuditWorkspace:
             )
             app.state.chunk_store, app.state.embeddings = (
                 self.store,
-                FixtureEmbeddings(),
+                self.embeddings,
             )
             self._client = TestClient(app)
             self.client = self._client.__enter__()
@@ -346,7 +397,12 @@ class AuditWorkspace:
 
     def _bootstrap(self) -> None:
         assert self._lock is not None and self._vector_client is not None
-        if self._vector_client.collection_exists(self.config.name) or (
+        vector_exists = (
+            bool(self._namespace_names())
+            if self.config.vector_strategy == "tenant_collections"
+            else self._vector_client.collection_exists(self.config.name)
+        )
+        if vector_exists or (
             self.config.root.exists() and any(self.config.root.iterdir())
         ):
             raise AuditWorkspaceError("unowned_audit_workspace")
@@ -437,9 +493,7 @@ class AuditWorkspace:
                 },
             )
         self.config.root.mkdir(parents=True, exist_ok=True)
-        self.store = QdrantChunkStore(
-            self._vector_client, self.config.name, dimension=FixtureEmbeddings.dimension
-        )
+        self.store = self._make_store()
         self.store.ensure_collection()
         self._save_snapshot()
 
@@ -477,24 +531,31 @@ class AuditWorkspace:
         return result
 
     def _point_snapshot(self) -> dict[str, str]:
-        if not self.store.client.collection_exists(self.config.name):
+        collections = self.store.collection_names()
+        separated = self.config.vector_strategy == "tenant_collections"
+        if separated and self._namespace_names() != set(collections):
             raise AuditWorkspaceError("audit_resource_drift")
         result: dict[str, str] = {}
-        offset: int | str | UUID | None = None
-        while True:
-            points, offset = self.store.client.scroll(
-                self.config.name,
-                limit=256,
-                offset=offset,
-                with_payload=True,
-                with_vectors=True,
-            )
-            for point in points:
-                result[str(point.id)] = _hash(point.model_dump(mode="json"))
-            if len(result) > 5000:
+        for name in collections:
+            if not self.store.client.collection_exists(name):
                 raise AuditWorkspaceError("audit_resource_drift")
-            if offset is None:
-                return result
+            offset: int | str | UUID | None = None
+            while True:
+                points, offset = self.store.client.scroll(
+                    name,
+                    limit=256,
+                    offset=offset,
+                    with_payload=True,
+                    with_vectors=True,
+                )
+                for point in points:
+                    key = f"{name}/{point.id}" if separated else str(point.id)
+                    result[key] = _hash(point.model_dump(mode="json"))
+                if len(result) > 5000:
+                    raise AuditWorkspaceError("audit_resource_drift")
+                if offset is None:
+                    break
+        return result
 
     def _validate_uploads(self) -> None:
         expected: dict[Path, str] = {}

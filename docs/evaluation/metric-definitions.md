@@ -1,0 +1,388 @@
+# Benchmark metric definitions
+
+Status: calculation helpers, production query capture and the utility CLI are
+implemented. Real-LLM cohorts, security/cost measurements and release checks
+are not complete.
+
+[Implementation](../../backend/app/evaluation/metrics.py) and
+[tests](../../backend/tests/unit/evaluation/test_metrics.py) use the standard
+library. No scientific package or model call is needed to test the calculations.
+
+## Retrieval utility
+
+Each permitted query needs a nonempty, independently assigned set of relevant
+UUIDs and an ordered list of unique retrieved UUIDs. Rankings and labels must
+use the same unit. Document-level evaluation must collapse repeated document
+IDs from retrieved chunks in first-occurrence order before scoring. Labels
+must be frozen before running the experiment; the helper does not discover
+relevance or decide document permissions.
+
+Recall@10 is the number of relevant IDs in the first ten results divided by
+the total number of relevant labels, including labels outside those results.
+Reciprocal rank@10 is one divided by the first relevant result's one-based
+rank, or zero if none appears in the first ten. MRR@10 is the macro average of
+those per-query reciprocal ranks. Average Recall@10 also weights each query
+equally. An empty result list scores zero; missing labels and duplicate ranked
+IDs are errors, not queries silently excluded from the denominator.
+
+## Latency and paired comparisons
+
+p50 and p95 use linear interpolation at positions `(n - 1) * 0.50` and
+`(n - 1) * 0.95` in sorted millisecond samples. Empty, negative and nonfinite
+samples are rejected. This is the linear quantile definition described in
+the [NumPy documentation](https://numpy.org/doc/stable/reference/generated/numpy.quantile.html).
+
+`paired_mean_interval` compares candidate minus reference for exactly matching
+query IDs. At least two pairs are required; missing or nonfinite measurements
+abort the comparison rather than reducing it to the successful intersection.
+Query IDs are sorted before sampling. A process-local `random.Random` uses
+seed `20261005` and 10,000 resamples by default without changing global RNG state.
+Each resample draws query differences with replacement and computes their mean.
+The 95% percentile interval uses the bootstrap distribution's 2.5th and 97.5th
+linear percentiles. Pair-preserving resampling and percentile intervals are
+described in the [SciPy documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.bootstrap.html).
+No SciPy implementation is copied or required.
+
+The result records the mean difference, interval, pair count, resample count
+and seed. Positive differences mean higher candidate values, not necessarily
+better performance: higher latency is worse. The interval describes variation
+under query resampling, not uncertainty in p50/p95 or a guarantee about unseen
+organizations. Correlated queries and repeated trials need a declared sampling
+unit before applying it. Small synthetic datasets can give misleadingly narrow
+intervals. Record the Python version with experiment provenance.
+
+## Fixed utility corpus
+
+`natural-utility-v1` uses seed `20261005`, three invented organizations, four
+groups per organization and 21 actors. Its 87 short policy documents have 87
+authored questions and document-level relevance labels: 60 organization-wide,
+24 group-restricted and three direct-user records. Depending on the actor,
+20 to 23 documents are eligible, so returning ten results cannot retrieve the
+entire permitted collection.
+
+The generator rejects incomplete inventories, foreign grants, forbidden labels
+and unsupported answer facts. Owner/admin/auditor roles do not supply document
+grants. This is declared dataset eligibility, not a replacement for production
+authorization. Tests check corpus integrity; no model quality is established.
+The short templated records are not a blind holdout or representative company
+dataset. Existing access/injection fixtures remain separate security regressions.
+
+The default corpus manifest has 55,094 bytes and SHA-256
+`f3f2b17b7d40ec7f6ce26e1779941241bc1ce5711f5152d6b461d26bb7fe329a`.
+It replaces text, questions and expected answers with hashes while retaining
+effective identities, grants and labels. Hashes provide provenance, not
+anonymization or proof that an operator executed a benchmark.
+
+Reproduce that checksum from `backend` without downloading a model:
+
+```console
+uv run --frozen python -c "from app.evaluation.dataset import generate_utility_corpus; print(generate_utility_corpus().checksum)"
+```
+
+## Utility report replay
+
+The [report schema and offline validator](../../backend/app/evaluation/reports.py)
+are implemented, with [production query capture](../../backend/app/evaluation/runner.py)
+and a [local CLI](../../backend/app/evaluation/cli.py). Unit tests use constructed
+observations; their scores are not model-quality results. A short integration
+check uses real pinned embeddings, fixture generation and an intentional timeout.
+The full measured cohort is still pending.
+
+Primary Recall@10 and MRR@10 require all 87 retrieval observations. A measured
+miss scores zero. Missing, truncated or observer-failed retrieval stays unknown.
+Observed-only averages retain their sample count, and incomplete runs keep
+exit code 2. Latencies use retrieval_accepted, including authorization refresh,
+SQL eligibility, embeddings, vector search and projection validation.
+
+For this corpus, citation correctness is recorded as citation_relevance: the
+fraction of delivered citations pointing to a relevant, permitted version in
+the actual context. It is source selection, not semantic entailment. Answer-label
+matches are counted separately; abstention is a miss, not a dropped query.
+
+Paired comparisons require complete logical query cohorts and identical source,
+locks, models, generation settings, machine and service provenance. Both source
+runs must be clean: a commit ID plus git_dirty=true does not identify the
+uncommitted changes. Dirty-source reports remain replayable individually.
+Reports retain bounded IDs and observations, not document bodies, prompts or answers.
+The validator checks original-byte receipts and replays derived fields without
+model calls. Partial inventory is valid evidence but never a completed cohort.
+Security, index/storage costs and revocation timing remain separate required
+measurements; this utility report alone is not the complete release benchmark.
+
+## Utility CLI
+
+The CLI uses the existing process-local RAGELIT_AUDIT configuration and owned
+workspace guards. Give it an absolute path to the verified embedding folder
+and explicitly choose fixture or local generation. Fixture mode runs real
+embeddings but does not measure LLM answer quality.
+
+From backend, a fixture run starts with:
+
+    uv run --frozen python -m app.evaluation.cli --embedding-root D:/replace/with/embedding-assets --provider fixture
+
+Local mode also requires a numeric loopback HTTP /v1 endpoint, model identifier,
+weights SHA-256 and server version through --base-url, --model,
+--weights-sha256 and --server-version. These declarations do not attest which
+weights the server loaded. Tenant collections require --strategy
+tenant_collections; the deliberately broken baseline requires --strategy
+lab_post_filter together with --lab.
+
+Each query logs in afresh and passes through production chat and authorization.
+Completed observations are written to immutable, provisional reports before
+the next query, under reports/utility-checkpoints within the owned workspace.
+Even a provisional snapshot containing all 87 queries has gate 2 and cannot
+enter paired comparisons. The final report and SHA-256 receipt go in reports.
+Interruptions and ordinary query failures retain their evidence and gate 2.
+
+Validate an original report without models or services:
+
+    uv run --frozen python -m app.evaluation.cli --validate-report D:/replace/with/report.json
+
+Validation exit 0 means artifact integrity and replay passed. Its JSON output
+separately states run_exit_code and coverage_complete; a valid partial artifact
+is not a completed run. --compare-reports takes two original report paths and
+rejects incomplete cohorts or mismatched provenance.
+
+## Revocation confirmation
+
+[Revocation capture](../../backend/app/evaluation/revocations.py) first checks
+that the actor can retrieve and cite the target's current version. A missing
+positive baseline causes no grant mutation.
+
+Confirmation starts immediately after a successful grant-update response and
+ends when the same actor's follow-up chat query has returned. It includes fresh
+authentication and ownership checks, so it measures application confirmation,
+not database propagation or a guaranteed worst-case delay. Denial requires
+observed accepted retrieval and context without the target, and no delivered
+target citation. Lab raw-retrieval exposure is a separate security measurement.
+
+The driver reads the original visibility and grants from the exact owned
+database, then restores them through the administration API. Records retain
+the before/after observations, acknowledgment state and restoration outcome.
+Missing evidence, runtime failure or failed restoration leaves primary delay
+unknown, never zero. Original numeric facts are not output-disclosure canaries.
+
+A short integration check uses real pinned embeddings and fixture generation.
+It observes access, revocation denial and restored access for one document.
+That is not a three-organization timing cohort or a real-LLM quality result.
+The CLI runs the fixed timing cohort using change-notice in each organization
+after the full utility query cohort. These records now enter the cost report;
+the full three-organization measurements are still pending.
+
+## Security rates and replay
+
+[Security rate calculations](../../backend/app/evaluation/security_metrics.py)
+count exposed cases, not repeated markers or chunks. Each boundary states its
+expected, recorded and measured case counts. A primary rate requires every
+expected case to be measured; partial observed rates retain their denominator.
+Missing, truncated or observer-failed evidence cannot establish absence.
+Known signals in truncated evidence are retained separately. A not-reached
+stage counts as absence only when the recorded denial proves that boundary
+was never reached.
+
+Raw retrieval, accepted retrieval, context, candidate output and delivered
+output remain separate. A candidate disclosure is retained when delivery is
+blocked. The audit's deliberate citation challenge is exempt only at rejected
+candidate citations, never at retrieval, context or output.
+
+Injection success is different from unauthorized disclosure. Following an
+instruction in an authorized poisoned document can succeed without revealing
+another document. The primary injection rate requires the full attack cohort
+and passing benign controls. Failed controls or runtime failure leave it
+unknown; the observed attack numerator and denominator remain visible.
+
+The [access-control registry replay](../../backend/app/evaluation/access_registry.py)
+reconstructs all 51 cases from the pinned template and recorded inventory. It
+checks document hashes, chunk IDs and actor identities, including isolated
+revocations and superseded versions. Forbidden chunks and canary labels are
+derived from those bindings rather than trusted from a submitted case. This is
+offline inventory validation, not a measured security result.
+
+The [access-control benchmark artifact](../../backend/app/evaluation/access_reports.py)
+stores raw observations alongside the owned inventory and configured generation
+profile for each case. Replay rebuilds case outcomes and the five exposure rates.
+The three controlled citation cases remain fixture-generated even when ordinary
+queries declare a local model.
+
+Each provisional artifact has a new filename while cohort_id retains the prepared
+lifecycle-instance namespace. It always has gate 2. A complete positive-control
+failure or observed forbidden exposure gives gate 1; missing coverage or runtime
+failure gives gate 2.
+
+Validate the original artifact offline:
+
+    uv run --frozen python -m app.evaluation.cli --validate-access-benchmark D:/replace/with/report.json
+
+Exit 0 proves integrity and replay; run_exit_code and coverage_complete describe
+the recorded run separately. Current checks use constructed fixture observations,
+not actual embeddings or a local LLM.
+
+The [access capture driver](../../backend/app/evaluation/access_runner.py)
+validates the full canonical pack before selecting one case. Ordinary queries
+log in afresh, including isolated lifecycle actors. Revoked-membership cases keep
+their pre-revocation session; token expiry remains a failure, not a passed denial.
+Controlled citation requests retain their fixture provider and candidate-rejection
+evidence. The original provider guard is unchanged.
+
+Query failures retain observed stages and restore application state. Checkpoints
+receive the latest raw record and interruption flags before another case starts.
+Current runner tests use local service doubles, not real embeddings or an LLM.
+Service-backed checks and full real-model measurements remain pending.
+
+Run the owned access-control pack with the existing embedding/provider options:
+
+    uv run --frozen python -m app.evaluation.cli --pack access-control --embedding-root D:/replace/with/embedding-assets --provider fixture
+
+The driver uses the same pinned embeddings for ingestion and chat, validates the
+original pack, and writes immutable reports/access-checkpoints before each next
+case. Final artifacts go in reports/access-benchmarks. The utility-only storage
+option and injection-specific flags are rejected for this pack.
+
+Add --cohort-id followed by a UUID to select matching lifecycle-document
+contents for strategy comparisons. Use the same ID in separate, fresh owned
+workspaces. This option is only accepted by the access-control runtime pack;
+omitting it creates a new UUID.
+
+A cohort ID already present in that workspace's instance bindings, final
+artifact/receipt, or checkpoint directory is rejected before pack preparation.
+This is not a resume option. Existing evidence stays intact.
+
+Interrupted queries and checkpoint failures retain the latest raw record. A
+failure after preparation publishes a partial final report when its canonical
+inventory is available; incomplete preparation returns a redacted setup failure
+without inventing bindings. Provisional snapshots always have gate 2. A complete
+failing pack has gate 1, not a passing security result.
+
+Current runner and CLI tests use local service doubles and constructed
+observations. Service-backed checks and full measurements remain pending.
+
+The [injection benchmark artifact](../../backend/app/evaluation/security_reports.py)
+binds canonical injection-v1 cases and document hashes to benchmark provenance,
+provider profile and retrieval strategy. Its validator replays raw stages and
+all derived rates. It rejects unknown chunk/canary IDs, mismatched generation
+mode, forged summaries and overwritten artifacts. It does not accept the old
+fixture audit report as evidence of real embedding execution.
+
+Run the owned injection pack with the same pinned embedding assets:
+
+    uv run --frozen python -m app.evaluation.cli --pack injection --embedding-root D:/replace/with/embedding-assets --provider fixture
+
+Fixture profiles are resistant (default), obeying and deny_all through
+--injection-profile. They test the harness, not LLM resistance.
+--injection-trials accepts 1 to 20. Local generation uses the existing
+local-provider options and does not accept a fixture profile.
+
+The driver verifies the workspace/model binding and exact chunk/canary registry,
+then logs in afresh for each case through production chat. Raw observations enter
+immutable reports/injection-checkpoints before the next case. Interruptions keep
+the latest observation and runtime flag; final artifacts go in
+reports/injection-benchmarks. Provisional snapshots always have gate 2.
+
+Validate an original injection benchmark without models or services:
+
+    uv run --frozen python -m app.evaluation.cli --validate-injection-benchmark D:/replace/with/report.json
+
+Validation exit 0 proves artifact integrity and replay, not execution. Its
+run_exit_code is 0 for a complete passing injection pack, 1 for a complete
+failing pack, or 2 for incomplete/provisional evidence. That pack gate does
+not complete the utility, access-control or release benchmark. Current unit
+and native CLI checks use constructed fixture observations. The owned capture
+driver is implemented, but service-backed injection/access-control checks
+and full real-model runs remain pending. Runner/CLI tests use local
+doubles and constructed fixture observations.
+
+## Paired security comparisons
+
+The comparison helpers in security_comparisons.py replay both source reports
+before pairing logical cases. They require complete coverage, identical model,
+source, machine and service provenance, and different strategies. Both source
+runs must have git_dirty=false. A completed security failure remains eligible;
+its original gate is retained.
+
+Access comparisons also match actual current/previous document hashes and all
+retained instance history. Lifecycle documents depend on their cohort nonce,
+so independently generated cohort IDs are not comparable. Use the same cohort
+namespace in separate owned workspaces, selected through --cohort-id on each
+access-control runtime command. Workspace, actor, document and chunk UUIDs are
+not pairing keys. All retained instance history must still match.
+
+Injection comparisons require identical trial counts and provider profiles.
+Exposure differences pair every case at five boundaries; injection ASR pairs
+only evaluated attacks, with passing benign controls required by the source
+report. Differences are candidate minus reference, using 10,000 bootstrap
+resamples and seed 20261005. The intervals describe this authored cohort,
+not population risk or model attestation.
+
+The focused tests use constructed observations. Compare two original reports
+without models or services:
+
+    uv run --frozen python -m app.evaluation.cli --compare-access-benchmarks D:/reference/report.json D:/candidate/report.json
+    uv run --frozen python -m app.evaluation.cli --compare-injection-benchmarks D:/reference/report.json D:/candidate/report.json
+
+CLI exit 0 means comparison succeeded, not that either security pack passed.
+The comparison includes both source gates. Partial, provisional, mismatched or
+invalid source reports return exit 2. Commands neither mutate source artifacts
+nor rerun queries. Actual paired model measurements remain pending.
+
+## Remaining measurements
+
+The [cost collectors](../../backend/app/evaluation/costs.py) measure ingestion
+work and owned storage. The CLI saves them with revocation observations in
+reports/utility-costs, alongside the separate utility report. Full measurements
+and security rates remain pending. Utility/cost completion is not release
+completion or a security result.
+
+Add --qdrant-container with the owned container name to collect physical vector
+storage. Without that measurement, storage coverage stays incomplete and the
+combined utility/cost gate is 2, even when the utility cohort itself has gate 0.
+The CLI records ingestion checkpoints before each next document and revocation
+checkpoints after each event, under reports/cost-checkpoints. They are immutable
+and provisional, so they always have gate 2.
+
+A setup failure retains measured ingestion work without inventing utility
+bindings or query records. A storage or revocation failure does not discard a
+completed utility cohort. Reports state the expected and observed counts;
+missing primary values stay unknown. The mean revocation delay requires all
+three eligible events. A partial observed mean carries its smaller denominator.
+
+Replay an original cost report without models or services:
+
+    uv run --frozen python -m app.evaluation.cli --validate-cost-report D:/replace/with/report.json
+
+This validates its receipt and recomputes summaries from bounded raw records,
+including the nested utility report. Validation exit 0 is separate from the
+recorded run gate. It cannot attest that an operator executed the measurements
+or that the declared generation weights were loaded.
+
+Fresh index time requires all 87 successful ingestion observations. Partial
+work keeps its recorded elapsed time, and reusing an existing index leaves
+primary build time unknown. Timings bracket the worker-to-ready helper,
+including ownership checks and ready-version verification. They exclude model
+download/loading, document upload, grant updates and later binding publication.
+
+Storage separates the entire owned PostgreSQL database in bytes, original
+upload files in bytes, and owned Qdrant collection directories in allocated
+KiB converted to bytes. The latter uses a read-only Docker probe after checking
+the container's immutable ID, official image/version and published loopback
+port against the configured service. It excludes shared server overhead and
+is not process RAM. An unavailable collection measurement stays unknown.
+
+Do not substitute Qdrant 1.15.4 segment disk/RAM telemetry for a disk probe:
+the [pinned implementation](https://github.com/qdrant/qdrant/blob/v1.15.4/lib/segment/src/segment/entry.rs)
+sets both fields to zero as unimplemented placeholders. Vector dimensions
+also do not establish physical storage size.
+
+These helpers and corpus checks do not establish genuine model quality.
+[Local embedding pins](model-pins.md) now define verified offline embedding
+assets. [Generation pins](generation-pins.md) now document the verified local
+CPU baseline and a three-query smoke, including its timeout. The release still
+requires full-cohort raw artifacts, unauthorized retrieval/context/output rates, injection success,
+citation correctness, index time, storage, collection count and revocation
+delay. Deterministic audit fixtures remain security regressions, not a substitute
+for the required benchmark.
+
+Run the calculation tests from `backend`:
+
+```console
+uv run --frozen pytest tests/unit/evaluation/test_metrics.py -q
+```

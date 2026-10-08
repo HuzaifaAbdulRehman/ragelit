@@ -24,7 +24,7 @@ from app.audits.workspace import (
     DocumentBinding,
     InstanceBinding,
 )
-from app.chat.contracts import Generation
+from app.chat.contracts import Generation, GenerationProvider
 from app.core.security import hash_password
 from app.identity.models import User
 from app.retrieval.contracts import AuthorizedChunk
@@ -292,6 +292,8 @@ def _evidence_registry(workspace: AuditWorkspace) -> tuple[_Evidence, ...]:
 
 
 def prepare_pack(workspace: AuditWorkspace, run_id: UUID) -> PreparedPack:
+    if workspace.template.pack_id == "utility-v1":
+        raise AuditWorkspaceError("audit_fixture_pack_required")
     workspace.validate_owned()
     if any(
         instance.state == "incomplete"
@@ -398,15 +400,33 @@ class BundledAuditTarget:
         *,
         profile: str = "safe",
         lab: bool = False,
+        generation_provider: GenerationProvider | None = None,
+        retrieval_store: QdrantChunkStore | None = None,
     ) -> None:
         if profile not in {"safe", "vulnerable", "deny_all"}:
             raise AuditWorkspaceError("invalid_audit_profile")
         if profile != "safe" and not lab:
             raise AuditWorkspaceError("audit_lab_opt_in_required")
+        if retrieval_store is not None:
+            if not lab:
+                raise AuditWorkspaceError("audit_lab_opt_in_required")
+            if profile != "safe":
+                raise AuditWorkspaceError("audit_store_conflict")
         workspace.validate_owned()
         if pack is None:
             raise AuditWorkspaceError("audit_pack_missing")
+        if generation_provider is not None and (
+            profile != "safe"
+            or any(
+                request.citation_challenge is not None
+                for request in pack.requests.values()
+            )
+        ):
+            raise AuditWorkspaceError("audit_provider_conflict")
         self.workspace, self.pack, self.profile = workspace, pack, profile
+        self._generation_provider = generation_provider
+        self._retrieval_store = retrieval_store
+        self._validate_retrieval_store()
         self._cases = {case.id: case for case in pack.cases}
         self._executed: set[str] = set()
         self._last_observation: AuditObservation | None = None
@@ -415,10 +435,20 @@ class BundledAuditTarget:
     def last_observation(self) -> AuditObservation | None:
         return self._last_observation
 
+    def _validate_retrieval_store(self) -> None:
+        store = self._retrieval_store
+        if store is not None and (
+            store.client is not self.workspace.store.client
+            or store.dimension != self.workspace.store.dimension
+            or store.collection_names() != self.workspace.store.collection_names()
+        ):
+            raise AuditWorkspaceError("audit_lab_target_mismatch")
+
     def execute(self, case: AuditCase) -> AuditObservation:
         self._last_observation = None
         if self._cases.get(case.id) != case or case.id in self._executed:
             raise AuditWorkspaceError("audit_case_mismatch")
+        self._validate_retrieval_store()
         request = self.pack.requests[case.id]
         workspace = self.workspace
         app = cast(FastAPI, workspace.client.app)
@@ -428,11 +458,17 @@ class BundledAuditTarget:
             known_chunk_ids=self.pack.known_chunk_ids,
         )
         provider = (
-            _ChallengeProvider(request.citation_challenge)
+            self._generation_provider
+            if self._generation_provider is not None
+            else _ChallengeProvider(request.citation_challenge)
             if request.citation_challenge is not None
             else FixtureCitingProvider()
         )
-        store = workspace.store
+        store = (
+            self._retrieval_store
+            if self._retrieval_store is not None
+            else workspace.store
+        )
         if self.profile != "safe":
             from app.audits.lab import LabQueryClient
 

@@ -5,7 +5,13 @@ from qdrant_client import QdrantClient, models
 
 from app.documents.chunking import TextChunk
 from app.documents.extraction import DocumentError
-from app.retrieval.embeddings import EmbeddingProvider
+from app.retrieval.embeddings import Embedding, EmbeddingProvider
+
+
+@dataclass(frozen=True, slots=True)
+class SearchProjection:
+    raw: tuple[models.ScoredPoint, ...]
+    accepted: tuple[models.ScoredPoint, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,19 +38,47 @@ class QdrantChunkStore:
         self.collection_name = collection_name
         self.dimension = dimension
 
+    def search_points(
+        self,
+        organization_id: UUID,
+        versions: tuple[UUID, ...],
+        vector: Embedding,
+        filters: models.Filter,
+        limit: int,
+    ) -> SearchProjection:
+        if not versions or not 1 <= limit <= 20:
+            raise DocumentError("invalid_query")
+        points = tuple(
+            self.client.query_points(
+                self.collection_name,
+                prefetch=[
+                    models.Prefetch(
+                        query=list(vector.dense),
+                        using="dense",
+                        filter=filters,
+                        limit=min(limit * 4, 80),
+                        score_threshold=0.3,
+                    ),
+                    models.Prefetch(
+                        query=models.SparseVector(
+                            indices=list(vector.indices), values=list(vector.values)
+                        ),
+                        using="sparse",
+                        filter=filters,
+                        limit=min(limit * 4, 80),
+                    ),
+                ],
+                query=models.FusionQuery(fusion=models.Fusion.RRF),
+                query_filter=filters,
+                limit=limit,
+                with_payload=True,
+            ).points
+        )
+        return SearchProjection(points, points)
+
     def ensure_collection(self) -> None:
         if not self.client.collection_exists(self.collection_name):
-            self.client.create_collection(
-                self.collection_name,
-                vectors_config={
-                    "dense": models.VectorParams(
-                        size=self.dimension, distance=models.Distance.COSINE
-                    )
-                },
-                sparse_vectors_config={
-                    "sparse": models.SparseVectorParams(modifier=models.Modifier.IDF)
-                },
-            )
+            self._create_collection()
         info = self.client.get_collection(self.collection_name)
         vectors = info.config.params.vectors
         sparse = info.config.params.sparse_vectors
@@ -105,6 +139,25 @@ class QdrantChunkStore:
                 field_schema=models.PayloadSchemaType.BOOL,
                 wait=True,
             )
+
+    def _create_collection(self) -> None:
+        self.client.create_collection(
+            self.collection_name,
+            vectors_config={
+                "dense": models.VectorParams(
+                    size=self.dimension, distance=models.Distance.COSINE
+                )
+            },
+            sparse_vectors_config={
+                "sparse": models.SparseVectorParams(modifier=models.Modifier.IDF)
+            },
+        )
+
+    def collection_names(self) -> tuple[str, ...]:
+        return (self.collection_name,)
+
+    def ensure_tenants(self, organizations: tuple[UUID, ...]) -> None:
+        pass
 
     def stage(
         self,

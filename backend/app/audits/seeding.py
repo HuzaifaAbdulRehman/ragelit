@@ -1,4 +1,5 @@
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from time import perf_counter
 from typing import cast
 from uuid import UUID, uuid4, uuid5
 
@@ -115,7 +116,10 @@ def verify_probe(
 
 
 def seed_workspace(
-    workspace: AuditWorkspace, template: FixtureTemplate
+    workspace: AuditWorkspace,
+    template: FixtureTemplate,
+    *,
+    on_ingestion: Callable[[str, float, bool], None] | None = None,
 ) -> FixtureBindings:
     workspace.validate_owned()
     if template.checksum != workspace.template.checksum:
@@ -166,6 +170,7 @@ def seed_workspace(
                 "memberships": memberships,
             }
         )
+        workspace.store.ensure_tenants(tuple(organizations.values()))
     cast(
         FastAPI, workspace.client.app
     ).state.generation_provider = FixtureCitingProvider()
@@ -237,21 +242,29 @@ def seed_workspace(
             )
             if response.status_code != 200:
                 raise AuditWorkspaceError("audit_grant_failed")
-        binding = ingest_document(
-            workspace, organizations[document.organization_id], document_id
-        )
+        started = perf_counter()
+        ready = False
+        try:
+            binding = ingest_document(
+                workspace, organizations[document.organization_id], document_id
+            )
+            ready = True
+        finally:
+            if on_ingestion is not None:
+                on_ingestion(document.id, (perf_counter() - started) * 1000, ready)
         with workspace.mutation():
             workspace.bindings = workspace.bindings.model_copy(
                 update={
                     "documents": workspace.bindings.documents | {document.id: binding}
                 }
             )
-        verify_probe(
-            workspace,
-            actor_headers(document.control_actor_id),
-            document.question,
-            binding,
-        )
+        if template.pack_id != "utility-v1":
+            verify_probe(
+                workspace,
+                actor_headers(document.control_actor_id),
+                document.question,
+                binding,
+            )
     with workspace.mutation():
         workspace.bindings = workspace.bindings.model_copy(update={"seeded": True})
     return workspace.bindings

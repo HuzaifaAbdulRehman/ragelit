@@ -89,8 +89,12 @@ class LogicalCase(AuditModel):
 
 
 class FixtureTemplate(AuditModel):
-    generator_id: Literal["synthetic-fixtures-v1"] = "synthetic-fixtures-v1"
-    pack_id: Literal["access-control-v1"] = "access-control-v1"
+    generator_id: Literal[
+        "synthetic-fixtures-v1", "synthetic-injection-v1", "natural-utility-v1"
+    ] = "synthetic-fixtures-v1"
+    pack_id: Literal["access-control-v1", "injection-v1", "utility-v1"] = (
+        "access-control-v1"
+    )
     seed: int
     organizations: tuple[FixtureOrganization, ...]
     groups: tuple[FixtureGroup, ...]
@@ -100,6 +104,8 @@ class FixtureTemplate(AuditModel):
 
     @property
     def canaries(self) -> dict[str, str]:
+        if self.pack_id == "utility-v1":
+            return {}
         return {document.canary_id: document.canary for document in self.documents}
 
     def canonical_manifest(self) -> bytes:

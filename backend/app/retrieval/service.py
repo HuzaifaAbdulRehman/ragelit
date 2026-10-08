@@ -1,7 +1,6 @@
 from time import perf_counter
 from uuid import UUID
 
-from qdrant_client import models
 from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedResponse
 from sqlalchemy.orm import Session
 
@@ -42,37 +41,16 @@ class AuthorizedRetriever:
         started = perf_counter()
         try:
             vector = self.provider.query(query)
-            points = self.store.client.query_points(
-                self.store.collection_name,
-                prefetch=[
-                    models.Prefetch(
-                        query=list(vector.dense),
-                        using="dense",
-                        filter=filters,
-                        limit=min(limit * 4, 80),
-                        score_threshold=0.3,
-                    ),
-                    models.Prefetch(
-                        query=models.SparseVector(
-                            indices=list(vector.indices), values=list(vector.values)
-                        ),
-                        using="sparse",
-                        filter=filters,
-                        limit=min(limit * 4, 80),
-                    ),
-                ],
-                query=models.FusionQuery(fusion=models.Fusion.RRF),
-                query_filter=filters,
-                limit=limit,
-                with_payload=True,
-            ).points
+            projection = self.store.search_points(
+                scope.organization_id, versions, vector, filters, limit
+            )
         except (ResponseHandlingException, UnexpectedResponse, OSError) as error:
             raise DocumentError("retrieval_unavailable", 503) from error
         if observer is not None:
-            observer.retrieval(points, (perf_counter() - started) * 1000)
+            observer.retrieval(projection.raw, (perf_counter() - started) * 1000)
         chunks: list[AuthorizedChunk] = []
         try:
-            for point in points:
+            for point in projection.accepted:
                 payload = point.payload
                 if (
                     payload is None

@@ -13,6 +13,8 @@ jobs:
     timeout-minutes: 90
     env:
       RAGELIT_AUDIT_EXPORT_DIRECTORY: ${{ github.workspace }}/data/audit-reports/ci
+      RAGELIT_INJECTION_EXPORT_DIRECTORY: ${{ github.workspace }}/data/injection-reports/ci
+      RAGELIT_ISOLATION_EXPORT_DIRECTORY: ${{ github.workspace }}/data/isolation-reports/ci
     services:
       postgres:
         image: postgres:18-alpine
@@ -29,7 +31,7 @@ jobs:
           --health-retries 10
 
       qdrant:
-        image: qdrant/qdrant:v1.15.4
+        image: qdrant/qdrant:v1.19.2@sha256:b7b0444c4c351c970b98e90a6f89c2ee4287c65b44e52b4cb503fa5b2aa927ad
         ports:
           - 6333:6333
 
@@ -51,6 +53,21 @@ jobs:
         with:
           name: access-control-audits
           path: data/audit-reports/ci/*.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload validated injection reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: injection-audits
+          path: data/injection-reports/ci/*.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload validated isolation comparisons
+        uses: actions/upload-artifact@v4
+        with:
+          name: isolation-comparisons
+          path: data/isolation-reports/ci/*.json
           if-no-files-found: error
           retention-days: 7
 

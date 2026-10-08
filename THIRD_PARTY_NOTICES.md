@@ -1,5 +1,19 @@
 # Third-party notices
 
+## Benchmark embedding assets
+
+Benchmark weights are downloaded separately, not copied into this repository.
+The committed pin manifest records the file hashes and source revisions:
+
+- [Qdrant BGE ONNX model](https://huggingface.co/Qdrant/bge-small-en-v1.5-onnx-Q/tree/aa8f8b060edb00e03bfdd08813a2949946c8ba55),
+  revision `aa8f8b060edb00e03bfdd08813a2949946c8ba55`, declares MIT.
+- [Qdrant BM25 files](https://huggingface.co/Qdrant/bm25/tree/22b8d2af71a76161e18dd432d2cee0eefa66e412),
+  revision `22b8d2af71a76161e18dd432d2cee0eefa66e412`, declares Apache-2.0.
+
+The asset folder retains each pinned model card. Preserve applicable notices
+when redistributing assets. FastEmbed remains an existing locked dependency;
+its code was not copied. See [local model pins](docs/evaluation/model-pins.md).
+
 ## Full Stack FastAPI Template
 
 RAGelit adapts project configuration and layout conventions from the Full

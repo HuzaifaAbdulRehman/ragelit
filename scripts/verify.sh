@@ -24,6 +24,22 @@ if [[ -e "$RAGELIT_AUDIT_EXPORT_DIRECTORY" || -L "$RAGELIT_AUDIT_EXPORT_DIRECTOR
   printf '%s\n' 'Audit exports need a fresh destination.' >&2
   exit 2
 fi
+if [[ -z "${RAGELIT_INJECTION_EXPORT_DIRECTORY:-}" ]]; then
+  injection_run_id="$(uv run --frozen python -c 'from uuid import uuid4; print(uuid4())')"
+  export RAGELIT_INJECTION_EXPORT_DIRECTORY="$repo_root/data/injection-reports/verification-$injection_run_id"
+fi
+if [[ -e "$RAGELIT_INJECTION_EXPORT_DIRECTORY" || -L "$RAGELIT_INJECTION_EXPORT_DIRECTORY" ]]; then
+  printf '%s\n' 'Injection exports need a fresh destination.' >&2
+  exit 2
+fi
+if [[ -z "${RAGELIT_ISOLATION_EXPORT_DIRECTORY:-}" ]]; then
+  isolation_run_id="$(uv run --frozen python -c 'from uuid import uuid4; print(uuid4())')"
+  export RAGELIT_ISOLATION_EXPORT_DIRECTORY="$repo_root/data/isolation-reports/verification-$isolation_run_id"
+fi
+if [[ -e "$RAGELIT_ISOLATION_EXPORT_DIRECTORY" || -L "$RAGELIT_ISOLATION_EXPORT_DIRECTORY" ]]; then
+  printf '%s\n' 'Isolation exports need a fresh destination.' >&2
+  exit 2
+fi
 run_gate "Backend format" uv run ruff format --check app tests
 run_gate "Backend lint" uv run ruff check app tests
 run_gate "CI script format" uv run ruff format --check --config pyproject.toml ../scripts
@@ -38,6 +54,12 @@ run_gate "PostgreSQL integration tests" \
 run_gate "Audit release artifacts" \
   uv run --frozen python -m app.audits.cli \
   --validate-reports "$RAGELIT_AUDIT_EXPORT_DIRECTORY"
+run_gate "Injection release artifacts" \
+  uv run --frozen python -m app.audits.injection_cli \
+  --validate-reports "$RAGELIT_INJECTION_EXPORT_DIRECTORY"
+run_gate "Isolation release artifacts" \
+  uv run --frozen python -m app.audits.isolation_cli \
+  --validate-reports "$RAGELIT_ISOLATION_EXPORT_DIRECTORY"
 
 cd "$repo_root/frontend"
 run_gate "Frontend dependencies" npm ci
