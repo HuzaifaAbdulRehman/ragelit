@@ -1,6 +1,7 @@
 # Local release checkpoint
 
-Checks ran on 6 October UTC (7 October in Pakistan). This is progress evidence,
+Initial checks ran on 6 October UTC (7 October in Pakistan), with updates through
+8 October UTC. This is progress evidence,
 not a completed v0.1 release. The working branch is public on GitHub and matches
 the local checkpoint; `main` is unchanged.
 
@@ -180,7 +181,38 @@ subprocess flag in a script test helper. That helper now selects
 `CREATE_NO_WINDOW` inside an explicit `sys.platform` Windows branch. Linux and
 Windows script type checks pass; all five native Windows script regressions
 passed in 9.634 seconds. Script lint, format and compilation checks passed.
-Full hosted verification remains pending.
+The script fix was pushed as `f8e66bb`. The complete
+[hosted Linux run](https://github.com/HuzaifaAbdulRehman/ragelit/actions/runs/37796567426)
+at `f8e66bb0c348210482a5fa5d044f7af183361852` passed both jobs. Verification
+took 22 minutes 34 seconds; the security job took 29 seconds.
+
+| Hosted check | Observed result |
+|---|---|
+| Backend and verification-script mypy | 235 plus 3 files; exit 0 |
+| Backend unit tests | 785 passed in 100.91 seconds |
+| Integration, API and migration tests | 251 passed, 4 skipped in 1024.96 seconds |
+| Frontend static checks and production build | Exit 0 |
+| Generated API contract | No drift |
+| Browser journeys | 57 passed in 2 minutes |
+| Access, injection and isolation release exports | Native validators passed; all three uploaded |
+| Secret and locked-dependency checks | Security job passed |
+
+All three export sets were downloaded from this exact run into a fresh ignored
+directory and replayed through their native validators on Windows. Each exited
+0. These are deterministic fixture results, not real-model measurements. This
+hosted pass replaces the earlier pending Linux CI status; it does not clear the
+separate container findings or generation benchmark.
+
+## Qdrant candidate compatibility (8 October)
+
+A separate loopback-only Qdrant 1.19.2 container and disposable PostgreSQL
+container ran the native safe access-control audit at clean source `a4d6f91`.
+All 51 cases completed with complete coverage and exit 0. The saved report and
+receipt passed the original reader. The exact image digest, run ID and remaining
+scan findings are recorded in the [container triage](../security/2026-10-08-container-triage.md).
+Both owned containers were removed afterward. Existing services, their data
+and compose pins were unchanged. This is safe-profile compatibility evidence,
+not a full candidate-image release gate.
 
 ## Review and remaining work
 
@@ -189,10 +221,12 @@ verification, workspace identity, report replay, provenance, access boundaries
 and audit jobs. It found no new implementation defect requiring a fix. Earlier
 focused test logs were inspected, not treated as a current-head full-suite pass.
 
-Still required: the current-head full verification script, remediation of the
-container findings, Linux CI setup/demo and final release documentation.
+Still required: remediation or justified, scoped disposition of the container
+findings, the remaining candidate-image compatibility checks and final release
+sign-off. The full hosted verification script and Linux CI demo now pass at the
+revision above; later documentation-only changes do not alter that tested code.
 Real-model generation/security quality and revocation measurements need
-suitable hardware. A local Linux setup smoke is separate from Linux CI. The
+suitable hardware. The
 current evidence is a well-tested local MVP, not a completed v0.1 release claim.
 
 Original reports, receipts, loaded-model proofs, logs and process leases remain

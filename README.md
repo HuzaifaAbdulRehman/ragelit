@@ -146,8 +146,10 @@ the dedicated `ragelit_e2e` database and collection. See the
 
 The [latest checkpoint](docs/verification/2026-10-07-local-release-checkpoint.md)
 records a clean Windows clone's complete 51-case safe audit, static checks,
-frontend build and original report validation. A bounded Linux frozen-install
-and CLI smoke also passed; it is not Linux CI or a full release-gate result.
+frontend build and original report validation. The complete
+[Linux CI run at f8e66bb](https://github.com/HuzaifaAbdulRehman/ragelit/actions/runs/37796567426)
+also passed: 785 unit tests, 251 integration tests and 57 browser journeys,
+plus static, build, secret and locked-dependency checks.
 
 The same checkpoint records 57 passing Playwright journeys, a fresh three-profile
 deterministic injection export, and a three-strategy deterministic isolation

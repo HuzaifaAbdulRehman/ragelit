@@ -65,10 +65,11 @@ storage, collection count and revocation delay. Paired confidence intervals
 must be reported where appropriate. Deterministic providers cannot supply
 real-model quality or resistance claims.
 
-The remaining current-head full release gate, container remediation, Linux CI
-and real-model measurements are pending. The [CI workflow](../../.github/workflows/ci.yml)
-defines secret scanning and offline locked-dependency auditing; configured gates
-are not evidence that the release passed them.
+The [full Linux CI run at f8e66bb](https://github.com/HuzaifaAbdulRehman/ragelit/actions/runs/37796567426)
+passed verification, secret scanning and offline locked-dependency auditing.
+Its three deterministic export sets also passed native validation on Windows.
+Container findings, real-model measurements and final release sign-off remain
+open. This CI pass does not replace those separate gates.
 
 Give audit bootstrap credentials only to the operator worker; ordinary requests
 need the non-owner application database URL. Use local services as documented.

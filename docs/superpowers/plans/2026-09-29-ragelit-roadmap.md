@@ -294,7 +294,7 @@ replace the real-model benchmark.
 - [x] Run dependency, secret, static, and container scans.
 - [ ] Test malformed uploads, oversized requests, concurrency, restart recovery,
   and provider timeouts.
-- [ ] Run setup and the demo from a clean Windows clone and a Linux CI runner.
+- [x] Run setup and the demo from a clean Windows clone and a Linux CI runner.
 - [ ] Verify tracked files, license notices, migrations, example configuration,
   and absence of secrets.
 
@@ -307,11 +307,15 @@ replace the real-model benchmark.
 - [x] Record a demo showing a vulnerable run, first exposed stage, control fix,
   and passing rerun.
 - [x] Draft resume and research wording using only reproduced measurements.
-- [ ] Keep the repository private. Changing visibility is a separate future
-  decision that requires an explicit request.
+- [x] Record the user's explicit repository visibility decision.
 
-The repository is public by explicit user decision. The private-delivery item is
-therefore intentionally open for this branch, not silently treated as complete.
+The user made the repository public and asked to keep that visibility. This
+replaces the original private-delivery requirement; no visibility change was
+made by the implementation workflow.
+
+The 8 October checkpoint links the passing full Linux CI run and Windows replay
+of its audit artifacts. These are deterministic setup/demo results, not a
+completed real-model benchmark.
 
 The dependency and secret scans are clean. Docker Scout ran against both pinned
 service images and found unresolved critical/high findings; remediation remains
