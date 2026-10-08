@@ -82,6 +82,11 @@ Candidate registry scans did not produce a clean replacement: PostgreSQL
 unchanged until an image update is paired with compatibility tests and a new
 service-backed verification run.
 
+The [8 October container triage](../security/2026-10-08-container-triage.md)
+separates startup-helper and build-inventory findings from linked runtime
+libraries. It records advisory prerequisites and a filtered candidate scan;
+it does not clear the images or change the compose pins.
+
 ## Current local gate
 
 The first full verification attempt reached the database integration stage but
