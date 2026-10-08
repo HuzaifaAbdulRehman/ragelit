@@ -123,6 +123,9 @@ class WindowsVerificationExportsTests(unittest.TestCase):
     def invoke(self, environment: dict[str, str]) -> tuple[int, dict[str, Any], str]:
         powershell = shutil.which("powershell.exe")
         assert powershell is not None
+        creationflags = 0
+        if sys.platform == "win32":
+            creationflags = subprocess.CREATE_NO_WINDOW
         result = subprocess.run(
             [
                 powershell,
@@ -138,7 +141,7 @@ class WindowsVerificationExportsTests(unittest.TestCase):
             capture_output=True,
             text=True,
             timeout=30,
-            creationflags=subprocess.CREATE_NO_WINDOW,
+            creationflags=creationflags,
             check=False,
         )
         self.assertEqual(result.stderr, "", result.stderr)

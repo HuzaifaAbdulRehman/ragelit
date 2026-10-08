@@ -167,8 +167,15 @@ branch, which mypy can narrow. No generation or retrieval behavior changed.
 The Linux-targeted mypy check reproduced the error before the fix. Afterward,
 Linux and Windows checks of `app/evaluation/cli.py` both passed. Its 20 CLI unit
 tests passed in 25.67 seconds, and Ruff lint/format checks passed. These are
-focused local checks, not a passing full hosted Linux gate. The fix is saved
-locally; another hosted run is still required.
+focused local checks, not a passing full hosted Linux gate.
+
+The fix was pushed as `37d9ffc`. Hosted run `37795692591` passed all 235
+backend type checks and the security job, then stopped at a Windows-only
+subprocess flag in a script test helper. That helper now selects
+`CREATE_NO_WINDOW` inside an explicit `sys.platform` Windows branch. Linux and
+Windows script type checks pass; all five native Windows script regressions
+passed in 9.634 seconds. Script lint, format and compilation checks passed.
+Full hosted verification remains pending.
 
 ## Review and remaining work
 
