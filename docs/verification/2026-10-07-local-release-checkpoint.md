@@ -1,9 +1,9 @@
 # Local release checkpoint
 
 Initial checks ran on 6 October UTC (7 October in Pakistan), with updates through
-8 October UTC. This is progress evidence,
-not a completed v0.1 release. The working branch is public on GitHub and matches
-the local checkpoint; `main` is unchanged.
+9 October Pakistan time. This is progress evidence,
+not a completed v0.1 release. The tested application MVP is merged into public
+`main`; the PostgreSQL zlib candidate remains a local, undeployed branch.
 
 ## Clean Windows setup
 
@@ -270,7 +270,7 @@ and audit jobs. It found no new implementation defect requiring a fix. Earlier
 focused test logs were inspected, not treated as a current-head full-suite pass.
 
 Still required: remediation or justified, scoped disposition of the container
-findings, final integration and release sign-off. The matching Qdrant image/client
+findings and release sign-off. The matching Qdrant image/client
 pair now passes the full fresh-data hosted gate at `44a70aa`; later
 documentation-only changes do not alter that tested code.
 Real-model generation/security quality and revocation measurements need
@@ -281,3 +281,16 @@ Original reports, receipts, loaded-model proofs, logs and process leases remain
 in ignored local storage under
 `.superpowers/sdd/2026-10-06-real-model-benchmark/`. They are not committed public
 artifacts. The ledger records the clean-clone path and exact report locations.
+
+## Merged MVP and PostgreSQL follow-up (9 October)
+
+[PR 27](https://github.com/HuzaifaAbdulRehman/ragelit/pull/27) merged the tested
+MVP at `e6465240f9a107907b13930adfd125248876d74b`. Both the PR gate and
+[main CI](https://github.com/HuzaifaAbdulRehman/ragelit/actions/runs/37821775490)
+passed. No unchanged local suite was rerun for this checkpoint.
+
+The [PostgreSQL zlib candidate](../security/2026-10-09-postgres-zlib-candidate.md)
+changes only zlib to 1.3.2-r1 and passes three opt-in Docker checks. It is not
+selected by Compose or CI and has not changed an existing service or volume.
+Container-security disposition, real-model generation/security and revocation
+measurements, and v0.1 sign-off remain open.

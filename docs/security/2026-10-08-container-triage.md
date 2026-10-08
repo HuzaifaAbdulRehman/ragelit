@@ -49,6 +49,11 @@ Run `38ccebcf-61d4-40a8-b363-91f6ef7baaa0` completed all 51 cases with complete 
 
 ## Next action
 
+The [9 October PostgreSQL zlib candidate](2026-10-09-postgres-zlib-candidate.md)
+now passes focused package, startup-configuration and compressed-backup checks.
+Only zlib changed to Alpine's fixed revision. It has not been deployed or selected
+by Compose/CI; other findings and the container-security gate remain open.
+
 After this initial triage, the user approved updating fresh-data defaults to the exact 1.19.2 image above and matching Python client 1.19.1. Compose and CI now select that pair. The [full compatibility gate](https://github.com/HuzaifaAbdulRehman/ragelit/actions/runs/37809980310) passed at `44a70aa31598c2d69094f31fae9d8fa3b225db76`: 786 unit tests, 251 integration tests and 57 browser journeys, plus static, build, secret and locked-dependency checks. All three validated audit export sets were uploaded.
 
 Running services and existing volumes were not changed. The [operator warning](../../OPERATIONS.md#existing-qdrant-data) explains why an older data volume must not be upgraded directly or downgraded afterward. This fresh-data pass does not test storage migration or clear the image findings.
