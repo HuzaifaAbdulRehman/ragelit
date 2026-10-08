@@ -308,10 +308,27 @@ success. No unchanged suite was rerun for this audit.
 | Malformed uploads | `test_malformed_docx_is_rejected` in `backend/tests/unit/documents/test_processing.py`; invalid-content ingestion asserts zero active points. | Synthetic malformed inputs, not a parser fuzzing campaign. |
 | Oversized requests | `test_invalid_upload_has_no_stored_file` in `backend/tests/api/test_documents.py` checks HTTP 413 and removal of partial uploads. | Configured document-upload limit, not every HTTP body type. |
 | Concurrency | `test_concurrent_owner_changes_keep_one_active_owner` in `backend/tests/api/test_members.py`; two audit workers cannot execute concurrently in `backend/tests/integration/audit_jobs/test_claims.py`. | Specific ownership and worker-lock races, not load testing. |
-| Recovery | Expired audit leases require explicit confirmation; superseded ingestion claims cannot activate points. The POSIX worker test sends SIGTERM and checks child reaping. | Lease and shutdown tests do not prove a full process restart-and-recovery exercise. |
+| Recovery | The Windows process test kills a claimed worker, verifies that a fresh worker requires explicit recovery, and completes a replacement job. Existing tests cover expired leases, superseded ingestion claims and POSIX child reaping. | Audit execution is stubbed and lease expiry accelerated; this does not measure natural recovery latency or model quality. |
 | Provider timeouts | `test_transport_timeout_has_stable_timeout_code` in `backend/tests/unit/chat/test_provider.py` checks HTTP 504, the stable error code and redaction of transport details. | Injected transport timeout, not successful real-model generation. |
 
-The combined hardening checkbox stays open for the unverified restart exercise.
-The PostgreSQL candidate still needs application compatibility evidence; the
-passing main gate used the existing database image. Container disposition and
-the full real-model measurement matrix remain separate release requirements.
+The combined hardening checkbox is now complete for the tested synthetic cases.
+The PostgreSQL candidate still needs application compatibility evidence.
+Container disposition and the full real-model measurement matrix remain separate
+release requirements.
+
+## Worker crash recovery (9 October)
+
+The focused Windows check passed all 10 restart and claim tests in 46.35 seconds
+against the cached PostgreSQL zlib candidate. It killed an owned worker after
+the claim was persisted, started a fresh worker, and verified that interrupted
+work remained inconclusive until explicit recovery confirmation. A replacement
+job then completed without replaying the interrupted job.
+
+Only audit execution was stubbed. The worker process, PostgreSQL claims,
+advisory lock and recovery CLI were real. Lease expiry was accelerated after
+the worker exited; this does not measure natural recovery latency or model
+quality. The disposable database used synthetic data, a 256 MiB memory cap and
+a half-CPU limit, and was removed after the test.
+
+Ruff lint and format checks and focused mypy passed. The source was
+13ae31c with the new restart test; this was not a full candidate-image gate.

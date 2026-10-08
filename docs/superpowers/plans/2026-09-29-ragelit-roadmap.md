@@ -292,7 +292,7 @@ replace the real-model benchmark.
 ### Task group M5.3: Hardening and release evidence
 
 - [x] Run dependency, secret, static, and container scans.
-- [ ] Test malformed uploads, oversized requests, concurrency, restart recovery,
+- [x] Test malformed uploads, oversized requests, concurrency, restart recovery,
   and provider timeouts.
 - [x] Run setup and the demo from a clean Windows clone and a Linux CI runner.
 - [ ] Verify tracked files, license notices, migrations, example configuration,
@@ -300,9 +300,10 @@ replace the real-model benchmark.
 
 The [9 October coverage audit](../../verification/2026-10-07-local-release-checkpoint.md#hardening-coverage-audit-9-october)
 maps existing malformed-upload, size-limit, concurrency and timeout assertions
-to the passing main revision. Recovery has lease and shutdown coverage; a full
-worker restart-and-recovery exercise is still unverified. The combined checkbox
-remains open rather than treating those narrower tests as a full release pass.
+to the passing main revision. The focused Windows restart-and-recovery check
+then passed 10 tests against a disposable database. Audit execution was stubbed
+and lease expiry accelerated; the checkpoint records those limits. This closes
+the combined hardening checkbox, not the separate release or benchmark gates.
 
 ### Task group M5.4: Release documentation
 
