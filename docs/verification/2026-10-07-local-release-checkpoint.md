@@ -79,14 +79,13 @@ service-backed gate. No image pin was changed from this scan alone.
 
 Candidate registry scans did not produce a clean replacement: PostgreSQL
 `18.6-alpine3.24` still reported 2 critical and 23 high findings, while Qdrant
-`v1.19.1` reported 7 critical and 26 high findings. The compose pins remain
-unchanged until an image update is paired with compatibility tests and a new
-service-backed verification run.
+`v1.19.1` reported 7 critical and 26 high findings. At that point, the compose
+pins remained unchanged pending a tested image/client update.
 
 The [8 October container triage](../security/2026-10-08-container-triage.md)
 separates startup-helper and build-inventory findings from linked runtime
 libraries. It records advisory prerequisites and a filtered candidate scan;
-it does not clear the images or change the compose pins.
+it does not clear the images. The later defaults update is recorded below.
 
 ## Current local gate
 
@@ -210,9 +209,51 @@ container ran the native safe access-control audit at clean source `a4d6f91`.
 All 51 cases completed with complete coverage and exit 0. The saved report and
 receipt passed the original reader. The exact image digest, run ID and remaining
 scan findings are recorded in the [container triage](../security/2026-10-08-container-triage.md).
-Both owned containers were removed afterward. Existing services, their data
-and compose pins were unchanged. This is safe-profile compatibility evidence,
+Both owned containers were removed afterward. At that stage, existing services,
+their data and compose pins were unchanged. This is safe-profile compatibility evidence,
 not a full candidate-image release gate.
+
+## Fresh-data Qdrant defaults (8 October)
+
+Commit `44a70aa31598c2d69094f31fae9d8fa3b225db76` updates Compose and CI to
+the exact Qdrant 1.19.2 image recorded in the triage, with Python client 1.19.1.
+Only the client changed in the Python lockfile. Regression checks verify the
+resolved Compose image and loopback ports, CI's matching image and the installed
+client's major/minor version.
+
+Both new version assertions were checked through a failing-to-passing cycle.
+The focused contract/retrieval command passed all 15 tests in 7.27 seconds.
+Ruff lint/format, compilation and Linux-targeted mypy across 238 files passed.
+Python editor diagnostics were unavailable because no Python LSP is configured.
+The staged redacted secret scan found no leaks. An independent read-only review
+found no actionable defects in this bounded update.
+
+The [updated hosted gate](https://github.com/HuzaifaAbdulRehman/ragelit/actions/runs/37809980310)
+passed at that exact source revision. Verification took 23 minutes 23 seconds;
+the security job took 33 seconds.
+
+| Updated hosted check | Observed result |
+|---|---|
+| Backend and script mypy | 235 plus 3 files; exit 0 |
+| Backend unit tests | 786 passed in 107.19 seconds |
+| Integration, API and migration tests | 251 passed, 4 skipped in 1066.92 seconds |
+| Frontend checks, generated API contract and production build | Exit 0; no contract drift |
+| Browser journeys | 57 passed in 2 minutes |
+| Access, injection and isolation exports | Native validators passed; all three uploaded |
+| Secret and locked-dependency checks | Security job passed |
+
+The three original export sets were downloaded from this updated run into fresh
+ignored storage at `data/ci-artifacts/run-37809980310`. Each contains three
+reports and three receipts. The access-control, injection and isolation readers
+all validated their sets on Windows with exit 0 using the frozen client 1.19.1
+environment. These checks loaded no model and changed no application data.
+
+Existing local services and volumes were not restarted or migrated. The local
+Qdrant service remains on 1.15.4; these checks do not establish its compatibility
+with the updated client. The [operator warning](../../OPERATIONS.md#existing-qdrant-data)
+requires sequential minor upgrades and a restorable backup before using newer
+images with existing data. A fresh-data CI pass is not a migration test or
+container-security clearance.
 
 ## Review and remaining work
 
@@ -222,9 +263,9 @@ and audit jobs. It found no new implementation defect requiring a fix. Earlier
 focused test logs were inspected, not treated as a current-head full-suite pass.
 
 Still required: remediation or justified, scoped disposition of the container
-findings, the remaining candidate-image compatibility checks and final release
-sign-off. The full hosted verification script and Linux CI demo now pass at the
-revision above; later documentation-only changes do not alter that tested code.
+findings, final integration and release sign-off. The matching Qdrant image/client
+pair now passes the full fresh-data hosted gate at `44a70aa`; later
+documentation-only changes do not alter that tested code.
 Real-model generation/security quality and revocation measurements need
 suitable hardware. The
 current evidence is a well-tested local MVP, not a completed v0.1 release claim.
