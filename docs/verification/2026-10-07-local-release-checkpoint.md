@@ -292,5 +292,7 @@ passed. No unchanged local suite was rerun for this checkpoint.
 The [PostgreSQL zlib candidate](../security/2026-10-09-postgres-zlib-candidate.md)
 changes only zlib to 1.3.2-r1 and passes three opt-in Docker checks. It is not
 selected by Compose or CI and has not changed an existing service or volume.
+Its exact-image critical/high scan reports 2 critical and 22 high findings;
+the zlib advisory is absent, but gosu and libxml2 findings remain.
 Container-security disposition, real-model generation/security and revocation
 measurements, and v0.1 sign-off remain open.
