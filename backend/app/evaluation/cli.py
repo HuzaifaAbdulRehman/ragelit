@@ -35,7 +35,7 @@ def machine_record() -> MachineRecord:
     from app.evaluation.reports import MachineRecord
 
     system = platform.system()
-    if system == "Windows":
+    if sys.platform == "win32":
 
         class MemoryStatus(ctypes.Structure):
             _fields_ = [

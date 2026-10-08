@@ -157,6 +157,19 @@ tokens, before generation. That exceeds the unchanged 30-second request deadline
 for this tested configuration. The user chose to stop model experiments and
 finish the other local checks; the generation benchmark remains open.
 
+## Linux CI portability fix (8 October)
+
+Hosted run `37677735437` at `af4de04` stopped during backend type checking:
+`ctypes.windll` was unavailable in the Linux type definitions. The benchmark
+machine-metadata code now uses `sys.platform == "win32"` to select the Windows
+branch, which mypy can narrow. No generation or retrieval behavior changed.
+
+The Linux-targeted mypy check reproduced the error before the fix. Afterward,
+Linux and Windows checks of `app/evaluation/cli.py` both passed. Its 20 CLI unit
+tests passed in 25.67 seconds, and Ruff lint/format checks passed. These are
+focused local checks, not a passing full hosted Linux gate. The fix is saved
+locally; another hosted run is still required.
+
 ## Review and remaining work
 
 One independent read-only review covered `58e7a6f..8b7d3aa`, including asset
