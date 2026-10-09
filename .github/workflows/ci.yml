@@ -24,8 +24,60 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: Diagnose public Docker endpoint connectivity
+        id: dockerhub_probe
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          for endpoint in https://auth.docker.io/ https://registry-1.docker.io/v2/; do
+            for mode in default ipv4; do
+              address_options=()
+              if [[ "$mode" == ipv4 ]]; then
+                address_options=(--ipv4)
+              fi
+              printf '%s %s: ' "$endpoint" "$mode"
+              if curl --disable --silent --show-error --output /dev/null \
+                --connect-timeout 5 --max-time 10 \
+                --write-out 'HTTP %{http_code}, DNS %{time_namelookup}s, connect %{time_connect}s, total %{time_total}s\n' \
+                "${address_options[@]}" "$endpoint"; then
+                :
+              else
+                printf 'probe exit=%s\n' "$?"
+              fi
+            done
+          done
+      - name: Authenticate Docker Hub pulls
+        id: dockerhub
+        shell: bash
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          PR_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          if [[ "$GITHUB_ACTOR" == 'dependabot[bot]' ||
+                ( "$GITHUB_EVENT_NAME" != push &&
+                  ( "$GITHUB_EVENT_NAME" != pull_request ||
+                    "$PR_HEAD_REPOSITORY" != "$GITHUB_REPOSITORY" ) ) ]]; then
+            printf '%s\n' 'Skip Docker Hub login for untrusted events.'
+            exit 0
+          fi
+          if [[ -z "$DOCKERHUB_USERNAME" && -z "$DOCKERHUB_TOKEN" ]]; then
+            printf '%s\n' 'Docker Hub secrets are absent; use anonymous pulls.'
+            exit 0
+          fi
+          if [[ -z "$DOCKERHUB_USERNAME" || -z "$DOCKERHUB_TOKEN" ]]; then
+            printf '%s\n' 'Configure both Docker Hub repository secrets.' >&2
+            exit 1
+          fi
+          printf '%s' "$DOCKERHUB_TOKEN" |
+            docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+          printf '%s\n' 'authenticated=true' >> "$GITHUB_OUTPUT"
       - name: Build patched service images
         run: docker compose --env-file .env.example --project-name ragelit-ci build postgres qdrant
+      - name: Remove Docker Hub credentials
+        id: dockerhub_logout
+        if: ${{ always() && steps.dockerhub.outputs.authenticated == 'true' }}
+        run: docker logout
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true

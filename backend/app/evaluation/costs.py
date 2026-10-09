@@ -172,9 +172,12 @@ def read_collection_disks(
         raise ValueError(_ERROR)
     info = json.loads(identity)
     version = workspace.store.client.info().version
+    expected_images = {f"qdrant/qdrant:v{version}"}
+    if version == "1.19.2":
+        expected_images.add("ragelit-qdrant:v1.19.2-pcre2-10.46-deb13u3")
     if (
         not re.fullmatch(r"[0-9a-f]{64}", info["id"])
-        or info["image"] != f"qdrant/qdrant:v{version}"
+        or info["image"] not in expected_images
         or not any(
             binding["HostIp"] == endpoint.hostname
             and binding["HostPort"] == str(endpoint.port)
