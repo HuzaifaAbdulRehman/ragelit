@@ -2,8 +2,9 @@
 
 Initial checks ran on 6 October UTC (7 October in Pakistan), with updates through
 9 October Pakistan time. This is progress evidence,
-not a completed v0.1 release. The tested application MVP is merged into public
-`main`; the PostgreSQL zlib candidate remains a local, undeployed branch.
+not a completed v0.1 release. The tested application MVP and patched
+fresh-install defaults are merged into public `main`. Existing services and
+data have not been migrated.
 
 ## Clean Windows setup
 
@@ -516,3 +517,47 @@ Evidence remains under
 
 The failed runs and regression logs are retained. The full hosted CI rerun is
 pending; remaining container findings and real-model release gates stay open.
+
+## Merged patch defaults and hosted CI (9 October)
+
+[PR #28](https://github.com/HuzaifaAbdulRehman/ragelit/pull/28) merged into
+`main` at `1ac8deb598b160393efed0fa4006b31ab1438afe`. Its tree matches
+the tested PR head `67553ed681e4f1542ea0176373521aff02fe293b` exactly.
+
+The [PR CI run](https://github.com/HuzaifaAbdulRehman/ragelit/actions/runs/37966718759)
+passed 794 unit tests in 86.91 seconds, 260 integration tests with four skips
+in 929.41 seconds, and 57 browser journeys in 1.8 minutes. Static checks,
+builds, secrets and locked-dependency audits passed. All three validated export
+sets were uploaded: access-control, injection and isolation. Disposable Compose
+cleanup passed. The separate push run `37966712226` also passed.
+
+These are deterministic application and audit results, not successful
+real-model generation or a clean container scan. The four model-dependent
+integration cases remain skipped. No local suite was repeated for this handoff,
+and existing services and data were not changed.
+
+The [post-merge CI run](https://github.com/HuzaifaAbdulRehman/ragelit/actions/runs/37972884533)
+completed successfully at `1ac8deb`: 794 unit tests in 85.44 seconds,
+260 integration tests with four skips in 746.63 seconds, and 57 browser journeys
+in 1.7 minutes. Security, static checks, builds, all three validated audit uploads
+and disposable-service cleanup passed. The current result confirms the merged
+application, not just its PR head.
+
+A bounded fix-availability check found that
+[Debian still lists Qdrant's zlib advisory as unfixed](https://security-tracker.debian.org/tracker/CVE-2026-85091).
+The [Alpine 3.24 recipe](https://raw.githubusercontent.com/alpinelinux/aports/3.24-stable/main/libxml2/APKBUILD)
+still selects libxml2 2.13.9-r2; its
+[security feed](https://secdb.alpinelinux.org/v3.24/main.json) has no entry for
+CVE-2026-86140. Missing feed data is not proof of safety. No new image scan,
+package removal or risk acceptance was performed.
+
+The user approved publishing a limited `v0.1.0-preview.1` prerelease. The
+[preview notes](../releases/v0.1.0-preview.1.md) restrict evaluation to local
+synthetic data. Publication changes Markdown only; successful application
+evidence is reused rather than repeating unchanged local suites.
+Issues #23 and #24 stay open for real-model measurements and stable-release
+sign-off. The user chose not to repeat CPU generation
+experiments; completing those measurements needs a faster execution environment
+within the existing no-paid-provider plan. Remaining image findings need
+supported fixes or an explicit release decision. Component removal, a UI rebuild,
+a changed deadline or a weaker gate is not silently included in this handoff.
