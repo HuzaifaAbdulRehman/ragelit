@@ -107,6 +107,47 @@ PoC can trigger behavior before the named range. Neither observation settles
 the installed package's classification. Keep it open, without suppression.
 No exploit PoC or new whole-image scan was run.
 
+## Remaining-path review (9 October)
+
+The exact PCRE2 candidate contains the Qdrant UI 0.2.19 inventory. Its SPDX
+relationships place tinypool 1.1.1 under Vitest 3.2.7, and Vitest is a development
+dependency of the UI. The matching upstream
+[package file](https://raw.githubusercontent.com/qdrant/qdrant-web-ui/v0.2.19/package.json)
+lists Vitest under `devDependencies` and uses Vite to build the static dashboard.
+Together with the previous no-Node startup inspection, this supports a scoped
+no-identified-runtime-path assessment for the two tinypool findings. It does
+not prove every bundled JavaScript dependency absent or approve suppression.
+
+The [Alpine 3.24 recipe](https://raw.githubusercontent.com/alpinelinux/aports/3.24-stable/main/libxml2/APKBUILD)
+still names libxml2 2.13.9-r2 and lists no fix for CVE-2026-86140. In
+[libxml2 2.13.9](https://raw.githubusercontent.com/GNOME/libxml2/v2.13.9/valid.c),
+`xmlSnprintfElements` is called while formatting a failed element-content
+validation diagnostic. [PostgreSQL 18.6's reviewed xml.c](https://raw.githubusercontent.com/postgres/postgres/REL_18_6/src/backend/utils/adt/xml.c)
+sets `NOENT` and `DTDATTR`, not `DTDVALID`; no direct call to the reviewed
+DTD-validation APIs was found there. RAGelit extracts DOCX with ElementTree,
+not SQL XML functions. This narrows the plausible application path, but does not
+prove transitive unreachability or clear arbitrary SQL, extensions or other
+libxml2 consumers. Keep the installed-library finding open.
+
+Brace-expansion, braces and source-map-js remain inventory findings with
+unverified browser/build paths. [Debian](https://security-tracker.debian.org/tracker/CVE-2026-85091)
+still marks Qdrant's zlib release vulnerable and unfixed. No supported
+same-release remediation was established in this review. Do not substitute an
+unrelated distribution package, delete only the SPDX file or silently accept risk.
+
+The extracted inventory is retained as `qdrant-ui-inventory.spdx.json` under
+`.superpowers/sdd/2026-10-09-postgres-zlib-candidate/`, SHA-256
+`c268249fa5e5a789ccc70ee91e14d8a39b38b7213b2d031dcffaf4efff34ba3b`.
+That directory also holds the four official source snapshots. The stopped
+extraction container was ownership-checked and removed with its anonymous
+volumes; independent queries confirmed cleanup. It never ran a server and used
+no existing data. No new scan or full suite ran, and no release gate was closed.
+
+The next decision is whether to promote the tested library-patch candidates
+into fresh-data defaults, or change image construction to remove or rebuild
+unused components. Either changes the approved candidate-only scope. Neither
+should be done silently, and the real-model benchmark remains separate.
+
 ## Reproduce the scoped scan
 
 ```powershell
