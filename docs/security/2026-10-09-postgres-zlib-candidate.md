@@ -1,6 +1,8 @@
 # PostgreSQL zlib candidate, 9 October 2026
 
-This is a tested local candidate, not a deployed image or release sign-off.
+This note records a tested local candidate, not an existing deployment or
+release sign-off. Compose and CI now build this recipe for fresh installs;
+see the [promotion checkpoint](../verification/2026-10-07-local-release-checkpoint.md#fresh-install-patch-promotion-9-october).
 It changes only zlib from 1.3.2-r0 to 1.3.2-r1 on the pinned official PostgreSQL
 18.6 Alpine 3.24 base. [Alpine's security feed](https://secdb.alpinelinux.org/v3.24/main.json)
 lists that revision as the fix for CVE-2026-85091.
@@ -90,8 +92,8 @@ The checkpoint retains the log, JUnit counts, manifest and their hashes.
 
 ## What this does not establish
 
-Compose and CI still select the existing PostgreSQL image. No existing service,
-database or volume was started, restarted or migrated by these checks.
+Compose and CI still selected the existing PostgreSQL image during these checks.
+No existing service, database or volume was started, restarted or migrated.
 The unchanged application baseline passes
 [main CI at e646524](https://github.com/HuzaifaAbdulRehman/ragelit/actions/runs/37821775490).
 The candidate checks above provide separate fixture-based compatibility

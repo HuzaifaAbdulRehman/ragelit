@@ -61,10 +61,11 @@ Run `38ccebcf-61d4-40a8-b363-91f6ef7baaa0` completed all 51 cases with complete 
 
 The [9 October PostgreSQL zlib candidate](2026-10-09-postgres-zlib-candidate.md)
 now passes focused package, startup-configuration and compressed-backup checks.
-Only zlib changed to Alpine's fixed revision. It has not been deployed or selected
-by Compose/CI; other findings and the container-security gate remain open.
+Only zlib changed to Alpine's fixed revision. The candidate checks did not change
+Compose/CI or deploy it. The later promotion below selects it for fresh installs;
+other findings and the container-security gate remain open.
 
-After this initial triage, the user approved updating fresh-data defaults to the exact 1.19.2 image above and matching Python client 1.19.1. Compose and CI now select that pair. The [full compatibility gate](https://github.com/HuzaifaAbdulRehman/ragelit/actions/runs/37809980310) passed at `44a70aa31598c2d69094f31fae9d8fa3b225db76`: 786 unit tests, 251 integration tests and 57 browser journeys, plus static, build, secret and locked-dependency checks. All three validated audit export sets were uploaded.
+After this initial triage, the user approved updating fresh-data defaults to the exact 1.19.2 image above and matching Python client 1.19.1. Compose and CI selected that pair at that stage. The [full compatibility gate](https://github.com/HuzaifaAbdulRehman/ragelit/actions/runs/37809980310) passed at `44a70aa31598c2d69094f31fae9d8fa3b225db76`: 786 unit tests, 251 integration tests and 57 browser journeys, plus static, build, secret and locked-dependency checks. All three validated audit export sets were uploaded.
 
 Running services and existing volumes were not changed. The [operator warning](../../OPERATIONS.md#existing-qdrant-data) explains why an older data volume must not be upgraded directly or downgraded afterward. This fresh-data pass does not test storage migration or clear the image findings.
 
@@ -89,8 +90,8 @@ The log is retained under
 The user then approved a local, pinned single-package candidate. The
 [PCRE2 candidate](2026-10-09-qdrant-pcre2-candidate.md) now passes inventory,
 startup, binary/UI and basic vector read/write checks. Its scan no longer
-reports the PCRE2 finding. It is not selected by Compose/CI or deployed;
-remaining findings and release gates are still open.
+reports the PCRE2 finding. Those candidate checks did not select it in Compose/CI
+or deploy it. Remaining findings and release gates are still open.
 
 The refreshed [Alpine v3.24 feed](https://secdb.alpinelinux.org/v3.24/main.json)
 still lists zlib `1.3.2-r1` for CVE-2026-85091, but has no libxml2 fix entry for
@@ -143,10 +144,10 @@ extraction container was ownership-checked and removed with its anonymous
 volumes; independent queries confirmed cleanup. It never ran a server and used
 no existing data. No new scan or full suite ran, and no release gate was closed.
 
-The next decision is whether to promote the tested library-patch candidates
-into fresh-data defaults, or change image construction to remove or rebuild
-unused components. Either changes the approved candidate-only scope. Neither
-should be done silently, and the real-model benchmark remains separate.
+The user approved [promoting both tested library patches](../verification/2026-10-07-local-release-checkpoint.md#fresh-install-patch-promotion-9-october)
+into fresh-install Compose and CI defaults. Existing services and data remain
+untouched. Removing or rebuilding other components would be separate work;
+remaining findings and the real-model benchmark are still open.
 
 ## Reproduce the scoped scan
 

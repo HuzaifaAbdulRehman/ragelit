@@ -436,6 +436,47 @@ for each reused node. Artifacts share lease `01c1db75baba4d52b75c658e413d2cbd`:
 - `compatibility-manifest-<lease>.txt`, SHA-256
   `ba28f0198a67fb4025db1a01daa3b50fb595204dd0b73d6fd0f2c36b15f6fdaa`.
 
-Compose and CI still select the existing image. Container-security disposition,
-real-model measurements and release sign-off remain open. No push, merge,
-deployment or existing-data migration was performed.
+Compose and CI still selected the existing image during those checks.
+Container-security disposition, real-model measurements and release sign-off
+remain open. No push, merge, deployment or existing-data migration was performed.
+
+## Fresh-install patch promotion (9 October)
+
+At source `1d53b36` plus this change, Compose selects the tested PostgreSQL
+18.6/zlib and Qdrant 1.19.2/PCRE2 recipes. CI builds them after checkout,
+starts a fresh `ragelit-ci` project, enables the image checks and removes its
+containers and volumes after verification. Running services and existing data
+were not changed. This is not release sign-off.
+
+Three new contract cases failed against the old defaults before implementation.
+The final focused file passed 12 tests in 3.53 seconds. Ruff format/lint,
+strict focused mypy and Python compilation passed; LSP reported no diagnostics.
+Application code and dependency locks are unchanged, so the earlier compatibility
+results above were reused rather than repeating the full matrix.
+
+The disposable Compose smoke passed package-version checks, restricted
+`ragelit_app` initialization and a synthetic Qdrant vector roundtrip.
+All 18 principal/RLS tests passed in 23.74 seconds, including migrations,
+revocation and cross-tenant restrictions. JUnit records zero failures, errors
+or skips. Each service had a 512 MiB memory cap and half a CPU.
+Startup, checks and cleanup took 47.4 seconds. Independent ownership-label
+queries found no remaining test containers or volumes.
+
+The exact CI Compose build command also passed using cached package layers.
+The selected image filesystems and startup settings match the previously
+tested candidates. Earlier smoke attempts stopped in the PowerShell harness:
+Docker progress on stderr, APK descriptive output and Debian's architecture
+suffix required corrections. Those failed logs remain available; none reached
+the application tests or used existing data.
+
+Evidence is retained under
+`.superpowers/sdd/2026-10-09-postgres-zlib-candidate/`:
+
+- `compose-promotion-smoke-passed.log`, SHA-256
+  `e1b8cb777a394a9a2cc2d2b0be7c878ad1c3260956c7f48219b4dfdbe9e101a0`.
+- `compose-promotion-smoke.xml`, SHA-256
+  `2d9775a5965112f97227f16792435085a414da1c6947c2ec6fdb53838fa63dab`.
+
+The fresh-install/CI configuration is verified locally. No new whole-image scan
+or hosted CI run was performed. Remaining container findings, real-model
+measurements and release sign-off stay open. Nothing was pushed or merged.

@@ -2,8 +2,9 @@
 
 This local candidate changes only `libpcre2-8-0` from `10.46-1~deb13u2` to
 `10.46-1~deb13u3`. [Debian](https://security-tracker.debian.org/tracker/CVE-2026-103111)
-lists that revision as the fix for CVE-2026-103111. It is not deployed, selected
-by Compose/CI or cleared for release.
+lists that revision as the fix for CVE-2026-103111. Compose and CI now build
+this recipe for fresh installs. No existing service was deployed or migrated,
+and the image is not cleared for release.
 
 The pinned Qdrant 1.19.2 base has digest
 `sha256:b7b0444c4c351c970b98e90a6f89c2ee4287c65b44e52b4cb503fa5b2aa927ad`.
@@ -68,4 +69,6 @@ Logs and JUnit evidence remain in ignored local storage under
 
 The failed inventory test against the unpatched base, failed startup attempt
 and successful build log are retained alongside them. Running services,
-existing data, Compose/CI and the application dependency lockfile are unchanged.
+existing data and the application dependency lockfile were unchanged by those
+candidate checks. The later [fresh-install promotion](../verification/2026-10-07-local-release-checkpoint.md#fresh-install-patch-promotion-9-october)
+changes Compose/CI defaults, not existing services or data.
