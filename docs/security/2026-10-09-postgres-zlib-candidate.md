@@ -77,15 +77,25 @@ test services and the anonymous disk volume were removed.
 
 The [local checkpoint](../verification/2026-10-07-local-release-checkpoint.md#candidate-application-audit-checks-9-october)
 records the command, source, storage limits and retained artifacts.
-The full 259-case candidate suite is not complete: 232 cases remain unexecuted.
+The remaining 232 cases then ran at clean source `83d4e97`, whose diff from
+`cfb8ec7` contains only Markdown changes. Pytest reported 225 passed and seven
+skipped in 4842.86 seconds, with exit 0. Both owned containers and volumes were
+removed after the run.
+
+Combined with the original 26 passes and focused isolation recheck, this gives
+252 passing cases across three runs, not one fresh 259-case pass. Four skips
+require explicit pinned embedding assets; real-model coverage remains open.
+The other three are the opt-in image checks that passed separately above.
+The checkpoint retains the log, JUnit counts, manifest and their hashes.
 
 ## What this does not establish
 
 Compose and CI still select the existing PostgreSQL image. No existing service,
 database or volume was started, restarted or migrated by these checks.
 The unchanged application baseline passes
-[main CI at e646524](https://github.com/HuzaifaAbdulRehman/ragelit/actions/runs/37821775490);
-that is not full application compatibility evidence for this candidate.
+[main CI at e646524](https://github.com/HuzaifaAbdulRehman/ragelit/actions/runs/37821775490).
+The candidate checks above provide separate fixture-based compatibility
+evidence; they do not cover the real-model opt-in tests.
 
 No exploit reproduction was run. The remaining
 [container findings](2026-10-08-container-triage.md), real-model generation/security

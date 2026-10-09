@@ -312,8 +312,8 @@ success. No unchanged suite was rerun for this audit.
 | Provider timeouts | `test_transport_timeout_has_stable_timeout_code` in `backend/tests/unit/chat/test_provider.py` checks HTTP 504, the stable error code and redaction of transport details. | Injected transport timeout, not successful real-model generation. |
 
 The combined hardening checkbox is now complete for the tested synthetic cases.
-The candidate audit checks below add focused compatibility evidence;
-the full candidate suite remains unfinished.
+The candidate checks below add fixture-based compatibility evidence across
+recorded runs. The real-model opt-in tests were not run against the candidate.
 Container disposition and the full real-model measurement matrix remain separate
 release requirements.
 
@@ -394,7 +394,48 @@ The log is retained under
 Exports remain under
 `data/candidate-compatibility/b1a3ffe4d22e49c19bcc71ff9a3ff71a/isolation/`.
 
-This is not a full compatibility-suite pass. Collection found 259 cases;
-232 after the original failure remain unexecuted against this candidate.
-The unchanged main CI evidence is separate. Container-security disposition,
-real-model measurements and release sign-off remain open.
+### Remaining compatibility checks
+
+The remaining 232 cases ran at clean source
+`83d4e97e33b0e9898b2cee658887f12e41e3fe93`. The diff from `cfb8ec7`
+contains only five Markdown files; application code, dependencies and tests
+are unchanged. Collection confirmed 259 cases. The harness deselected exactly
+the first 27 node IDs, through the focused isolation test above, to reuse the
+original 26 passes and its successful recheck.
+
+Pytest reported 225 passed, 7 skipped and 27 deselected in 4842.86 seconds,
+with exit 0. JUnit independently records 232 tests, zero failures, zero errors
+and seven skips. The run exercised DB-backed audits, ownership checks,
+authentication, tenant isolation, document lifecycle, retrieval and migrations.
+Model responses used fixtures.
+
+Four skips require explicit pinned embedding assets. These cover cost-report
+replay, revocation measurement, chat/timeout evaluation and the pinned-model
+pipeline. The other three require the candidate-image opt-in variable; their
+inventory, startup and compressed-dump checks already passed separately in
+46.12 seconds, as recorded in the candidate write-up.
+
+Across the original run, focused recheck and remainder, 252 cases passed and
+seven skipped. This is combined evidence, not one fresh 259-case pass. The
+candidate-image opt-in results are separate; real-model coverage remains open.
+
+Both services used owned anonymous disk volumes, 512 MiB and one CPU caps,
+and loopback-only ports. Including setup and cleanup, the harness took
+4884.21 seconds. Fresh ownership-label and volume queries confirmed that its
+two containers and two volumes were removed. No existing data was used.
+
+The saved harness is `check-remaining-compatibility.ps1` under
+`.superpowers/sdd/2026-10-09-postgres-zlib-candidate/`. It ran the DB/API/migration
+selection with `-vv --maxfail=1 --tb=short --junitxml`, adding `--deselect`
+for each reused node. Artifacts share lease `01c1db75baba4d52b75c658e413d2cbd`:
+
+- `compatibility-remainder-<lease>.log`, SHA-256
+  `fd8eebc1b5ba3e53ed656cde165caf74df8cc4ebc947e6879575b8f1c35837e0`.
+- `compatibility-remainder-<lease>.xml`, SHA-256
+  `2d3871ae65652b59c54e69e361ab14d8118750b9f9d2d00f7dab1411debf4689`.
+- `compatibility-manifest-<lease>.txt`, SHA-256
+  `ba28f0198a67fb4025db1a01daa3b50fb595204dd0b73d6fd0f2c36b15f6fdaa`.
+
+Compose and CI still select the existing image. Container-security disposition,
+real-model measurements and release sign-off remain open. No push, merge,
+deployment or existing-data migration was performed.

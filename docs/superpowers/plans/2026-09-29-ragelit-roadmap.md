@@ -332,6 +332,12 @@ The dependency and secret scans are clean. Docker Scout ran against both pinned
 service images and found unresolved critical/high findings; remediation remains
 open even though the scan itself is complete.
 
+The [9 October candidate checks](../../verification/2026-10-07-local-release-checkpoint.md#remaining-compatibility-checks)
+record 252 DB/API/migration passes across three runs against the local PostgreSQL
+zlib candidate. Four model-dependent cases remain skipped; the three image
+opt-in checks passed separately. This does not close container disposition or
+the real-model benchmark gate. Compose and CI remain unchanged.
+
 Gate: v0.1 starts from a clean clone, runs its audit without private services,
 and reproduces every number used in public prose.
 
