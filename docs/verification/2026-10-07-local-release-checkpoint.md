@@ -537,9 +537,11 @@ integration cases remain skipped. No local suite was repeated for this handoff,
 and existing services and data were not changed.
 
 The [post-merge CI run](https://github.com/HuzaifaAbdulRehman/ragelit/actions/runs/37972884533)
-is still running at this checkpoint. Its security job passed; the full
-verification job has not finished. The previous PR pass is not reported as a
-completed post-merge run.
+completed successfully at `1ac8deb`: 794 unit tests in 85.44 seconds,
+260 integration tests with four skips in 746.63 seconds, and 57 browser journeys
+in 1.7 minutes. Security, static checks, builds, all three validated audit uploads
+and disposable-service cleanup passed. The current result confirms the merged
+application, not just its PR head.
 
 A bounded fix-availability check found that
 [Debian still lists Qdrant's zlib advisory as unfixed](https://security-tracker.debian.org/tracker/CVE-2026-85091).
@@ -549,8 +551,12 @@ still selects libxml2 2.13.9-r2; its
 CVE-2026-86140. Missing feed data is not proof of safety. No new image scan,
 package removal or risk acceptance was performed.
 
-Next: confirm post-merge CI. Issues #23 and #24 stay open for real-model
-measurements and release sign-off. The user chose not to repeat CPU generation
+The user approved publishing a limited `v0.1.0-preview.1` prerelease. The
+[preview notes](../releases/v0.1.0-preview.1.md) restrict evaluation to local
+synthetic data. Publication changes Markdown only; successful application
+evidence is reused rather than repeating unchanged local suites.
+Issues #23 and #24 stay open for real-model measurements and stable-release
+sign-off. The user chose not to repeat CPU generation
 experiments; completing those measurements needs a faster execution environment
 within the existing no-paid-provider plan. Remaining image findings need
 supported fixes or an explicit release decision. Component removal, a UI rebuild,

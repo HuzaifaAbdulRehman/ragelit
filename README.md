@@ -7,12 +7,12 @@ Upload documents, grant reading access, and ask questions with source citations
 in one web portal. RAGelit also runs synthetic audits through the application
 pipeline to show where unauthorized evidence appears or is blocked.
 
-Status: MVP preview in preparation, not a published release. Container-security
+Status: MVP preview for local synthetic-data evaluation. Container-security
 findings and real-model quality measurements remain open. Evaluate locally with
 synthetic documents only; this is not cleared for production or confidential data.
 
 [Quick start](#quick-start) · [Operator reference](OPERATIONS.md) ·
-[Draft preview notes](docs/releases/v0.1.0-preview.1.md) ·
+[Preview notes](docs/releases/v0.1.0-preview.1.md) ·
 [Security controls](docs/security/control-matrix.md) ·
 [Verification checkpoint](docs/verification/2026-10-07-local-release-checkpoint.md)
 
