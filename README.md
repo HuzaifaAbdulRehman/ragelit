@@ -87,11 +87,15 @@ Requires Docker Desktop/Compose, Python 3.12 or 3.13, uv, and Node.js 22 with np
 These defaults use Qdrant 1.19.2 with client 1.19.1. If you already have Qdrant
 data from an older version, read the [upgrade warning](OPERATIONS.md#existing-qdrant-data)
 before starting services. The commands below assume fresh data.
+Compose builds local linux/amd64 images from pinned upstream bases, with
+[PostgreSQL's zlib](docs/security/2026-10-09-postgres-zlib-candidate.md) and
+[Qdrant's PCRE2](docs/security/2026-10-09-qdrant-pcre2-candidate.md) fixes.
+Builds need package-repository access. Other container findings remain open.
 From the repository root on Windows:
 
 ```powershell
 Copy-Item .env.example .env
-docker compose up -d postgres qdrant
+docker compose up -d --build postgres qdrant
 cd backend
 uv sync --frozen
 uv run --frozen alembic upgrade head

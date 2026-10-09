@@ -28,9 +28,17 @@ These defaults target fresh Qdrant 1.19.2 storage with Python client 1.19.1.
 For an existing installation, read [Existing Qdrant data](#existing-qdrant-data)
 before running Compose.
 
+Fresh installs build local linux/amd64 images from pinned upstream bases,
+with PostgreSQL's zlib and Qdrant's PCRE2 fixes. Builds need access to the
+package repositories. Other container findings remain open.
+
+PostgreSQL defaults now use 18.6. Do not attach an older major-version data
+volume directly; follow the [PostgreSQL upgrade procedures](https://www.postgresql.org/docs/18/upgrading.html).
+These changes do not restart services or migrate existing data.
+
 ```powershell
 Copy-Item .env.example .env
-docker compose up -d postgres qdrant
+docker compose up -d --build postgres qdrant
 ```
 
 On macOS or Linux, use `cp .env.example .env` instead. Prepare and start the API:
@@ -182,8 +190,9 @@ these test containers:
 
 ```console
 docker compose stop postgres qdrant
-docker run --rm --name ragelit-postgres-test -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:5432:5432 -d postgres:18-alpine
-docker run --rm --name ragelit-qdrant-test -p 127.0.0.1:6333:6333 -d qdrant/qdrant:v1.19.2@sha256:b7b0444c4c351c970b98e90a6f89c2ee4287c65b44e52b4cb503fa5b2aa927ad
+docker compose build postgres qdrant
+docker run --rm --name ragelit-postgres-test -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:5432:5432 -d ragelit-postgres:18.6-zlib-1.3.2-r1
+docker run --rm --name ragelit-qdrant-test -p 127.0.0.1:6333:6333 -d ragelit-qdrant:v1.19.2-pcre2-10.46-deb13u3
 ```
 
 Run `powershell -File scripts/verify.ps1` on Windows or
@@ -209,6 +218,11 @@ not verify Linux/PostgreSQL 18 CI or the quality of a real model.
 ```console
 docker stop ragelit-postgres-test ragelit-qdrant-test
 ```
+
+CI builds the same patched recipes after checkout and starts them with Compose
+in its own fresh `ragelit-ci` project. It runs the image opt-in checks as part of
+the integration gate, then removes that project's containers and volumes even
+if verification fails. This does not clear the remaining image findings.
 
 CI scans for secrets and audits both committed lockfiles with OSV 2.6.0.
 The workflow downloads public npm and PyPI vulnerability databases, then

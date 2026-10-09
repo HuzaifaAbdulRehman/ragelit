@@ -292,11 +292,22 @@ replace the real-model benchmark.
 ### Task group M5.3: Hardening and release evidence
 
 - [x] Run dependency, secret, static, and container scans.
-- [ ] Test malformed uploads, oversized requests, concurrency, restart recovery,
+- [x] Test malformed uploads, oversized requests, concurrency, restart recovery,
   and provider timeouts.
 - [x] Run setup and the demo from a clean Windows clone and a Linux CI runner.
-- [ ] Verify tracked files, license notices, migrations, example configuration,
+- [x] Verify tracked files, license notices, migrations, example configuration,
   and absence of secrets.
+
+The [9 October file review](../../verification/2026-10-07-local-release-checkpoint.md#release-file-review-9-october)
+records the reference commits, preserved license text, unchanged migration and
+configuration baseline, and clean redacted branch-history scan.
+
+The [9 October coverage audit](../../verification/2026-10-07-local-release-checkpoint.md#hardening-coverage-audit-9-october)
+maps existing malformed-upload, size-limit, concurrency and timeout assertions
+to the passing main revision. The focused Windows restart-and-recovery check
+then passed 10 tests against a disposable database. Audit execution was stubbed
+and lease expiry accelerated; the checkpoint records those limits. This closes
+the combined hardening checkbox, not the separate release or benchmark gates.
 
 ### Task group M5.4: Release documentation
 
@@ -320,6 +331,17 @@ completed real-model benchmark.
 The dependency and secret scans are clean. Docker Scout ran against both pinned
 service images and found unresolved critical/high findings; remediation remains
 open even though the scan itself is complete.
+
+The [9 October candidate checks](../../verification/2026-10-07-local-release-checkpoint.md#remaining-compatibility-checks)
+record 252 DB/API/migration passes across three runs against the local PostgreSQL
+zlib candidate. Four model-dependent cases remain skipped; the three image
+opt-in checks passed separately. This does not close container disposition or
+the real-model benchmark gate. Those checks left Compose and CI unchanged.
+
+The later [fresh-install promotion](../../verification/2026-10-07-local-release-checkpoint.md#fresh-install-patch-promotion-9-october)
+selects both tested library-patch recipes in Compose and CI. Local contract and
+disposable tenant-isolation checks pass; hosted CI is pending. Existing data
+and the remaining release gates are unchanged.
 
 Gate: v0.1 starts from a clean clone, runs its audit without private services,
 and reproduces every number used in public prose.

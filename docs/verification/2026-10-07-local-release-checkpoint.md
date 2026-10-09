@@ -1,9 +1,9 @@
 # Local release checkpoint
 
 Initial checks ran on 6 October UTC (7 October in Pakistan), with updates through
-8 October UTC. This is progress evidence,
-not a completed v0.1 release. The working branch is public on GitHub and matches
-the local checkpoint; `main` is unchanged.
+9 October Pakistan time. This is progress evidence,
+not a completed v0.1 release. The tested application MVP is merged into public
+`main`; the PostgreSQL zlib candidate remains a local, undeployed branch.
 
 ## Clean Windows setup
 
@@ -270,7 +270,7 @@ and audit jobs. It found no new implementation defect requiring a fix. Earlier
 focused test logs were inspected, not treated as a current-head full-suite pass.
 
 Still required: remediation or justified, scoped disposition of the container
-findings, final integration and release sign-off. The matching Qdrant image/client
+findings and release sign-off. The matching Qdrant image/client
 pair now passes the full fresh-data hosted gate at `44a70aa`; later
 documentation-only changes do not alter that tested code.
 Real-model generation/security quality and revocation measurements need
@@ -281,3 +281,238 @@ Original reports, receipts, loaded-model proofs, logs and process leases remain
 in ignored local storage under
 `.superpowers/sdd/2026-10-06-real-model-benchmark/`. They are not committed public
 artifacts. The ledger records the clean-clone path and exact report locations.
+
+## Merged MVP and PostgreSQL follow-up (9 October)
+
+[PR 27](https://github.com/HuzaifaAbdulRehman/ragelit/pull/27) merged the tested
+MVP at `e6465240f9a107907b13930adfd125248876d74b`. Both the PR gate and
+[main CI](https://github.com/HuzaifaAbdulRehman/ragelit/actions/runs/37821775490)
+passed. No unchanged local suite was rerun for this checkpoint.
+
+The [PostgreSQL zlib candidate](../security/2026-10-09-postgres-zlib-candidate.md)
+changes only zlib to 1.3.2-r1 and passes three opt-in Docker checks. It is not
+selected by Compose or CI and has not changed an existing service or volume.
+Its exact-image critical/high scan reports 2 critical and 22 high findings;
+the zlib advisory is absent, but gosu and libxml2 findings remain.
+Container-security disposition, real-model generation/security and revocation
+measurements, and v0.1 sign-off remain open.
+
+## Hardening coverage audit (9 October)
+
+The inspected assertions and verification script match the passing main revision
+`e6465240f9a107907b13930adfd125248876d74b`. Its CI run still reports completed
+success. No unchanged suite was rerun for this audit.
+
+| Requirement | Existing test evidence | Limit |
+| --- | --- | --- |
+| Malformed uploads | `test_malformed_docx_is_rejected` in `backend/tests/unit/documents/test_processing.py`; invalid-content ingestion asserts zero active points. | Synthetic malformed inputs, not a parser fuzzing campaign. |
+| Oversized requests | `test_invalid_upload_has_no_stored_file` in `backend/tests/api/test_documents.py` checks HTTP 413 and removal of partial uploads. | Configured document-upload limit, not every HTTP body type. |
+| Concurrency | `test_concurrent_owner_changes_keep_one_active_owner` in `backend/tests/api/test_members.py`; two audit workers cannot execute concurrently in `backend/tests/integration/audit_jobs/test_claims.py`. | Specific ownership and worker-lock races, not load testing. |
+| Recovery | The Windows process test kills a claimed worker, verifies that a fresh worker requires explicit recovery, and completes a replacement job. Existing tests cover expired leases, superseded ingestion claims and POSIX child reaping. | Audit execution is stubbed and lease expiry accelerated; this does not measure natural recovery latency or model quality. |
+| Provider timeouts | `test_transport_timeout_has_stable_timeout_code` in `backend/tests/unit/chat/test_provider.py` checks HTTP 504, the stable error code and redaction of transport details. | Injected transport timeout, not successful real-model generation. |
+
+The combined hardening checkbox is now complete for the tested synthetic cases.
+The candidate checks below add fixture-based compatibility evidence across
+recorded runs. The real-model opt-in tests were not run against the candidate.
+Container disposition and the full real-model measurement matrix remain separate
+release requirements.
+
+## Worker crash recovery (9 October)
+
+The focused Windows check passed all 10 restart and claim tests in 46.35 seconds
+against the cached PostgreSQL zlib candidate. It killed an owned worker after
+the claim was persisted, started a fresh worker, and verified that interrupted
+work remained inconclusive until explicit recovery confirmation. A replacement
+job then completed without replaying the interrupted job.
+
+Only audit execution was stubbed. The worker process, PostgreSQL claims,
+advisory lock and recovery CLI were real. Lease expiry was accelerated after
+the worker exited; this does not measure natural recovery latency or model
+quality. The disposable database used synthetic data, a 256 MiB memory cap and
+a half-CPU limit, and was removed after the test.
+
+Ruff lint and format checks and focused mypy passed. The source was
+13ae31c with the new restart test; this was not a full candidate-image gate.
+
+## Release-file review (9 October)
+
+At source `cfb8ec7`, all six local reference clones matched their recorded
+commits. The MIT license block in `THIRD_PARTY_NOTICES.md` matched the FastAPI
+template's original text. The notice lists the adapted files and separately
+records the downloaded benchmark assets.
+
+No reference clones, local data, model weights or local environment files are tracked.
+The seven migrations, runtime settings, example configuration and notices are
+unchanged from passing main `e646524`. Their existing migration and repository
+contract checks are part of that recorded CI result; they were not rerun for
+this file review. The example uses local development credentials, leaves
+generation disabled, and matches the implemented settings. Production settings
+reject the placeholder secret and insecure cookies.
+
+A redacted Gitleaks scan of `e646524..cfb8ec7` covered four commits and about
+21.20 KB, exited 0 and found no leaks. Its empty JSON report is retained in
+ignored local storage as `release-secrets-cfb8ec7.json`, SHA-256
+`37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570`.
+This closes the tracked-file review checkbox, not container-security or
+real-model release requirements.
+
+## Candidate application audit checks (9 October)
+
+Clean source `cfb8ec7` was tested against the exact PostgreSQL zlib candidate
+and Qdrant 1.19.2 image recorded in the candidate write-up, with fixture
+embeddings and generation rather than a real language model.
+
+The initial DB/API/migration run stopped with 26 passed and one failed in
+3712.28 seconds. Two isolation strategies had completed; the lab strategy
+failed during its first document ingestion. A five-collection probe reproduced
+Qdrant's error: "No space left on device: WAL buffer size exceeds available
+disk space". The 256 MiB tmpfs could not allocate the fifth collection's WAL
+buffer. No application source was changed.
+
+Replacing only Qdrant's temporary storage with an owned anonymous disk volume
+passed the same five-collection probe. The focused recheck then passed:
+
+```console
+uv run --frozen pytest tests/integration/audits/test_isolation_cli.py::test_real_cli_exports_three_fresh_workspace_strategies -q --maxfail=1 --tb=short
+```
+
+One test passed in 1241.46 seconds. Each strategy completed all 51 cases:
+shared pre-filter and tenant collections exited 0; lab post-filter exited 1
+as expected. The native isolation reader validated the three reports and
+receipts. Native readers also validated the saved access and injection exports;
+those audits were not repeated.
+
+Both services had 512 MiB and one CPU caps with loopback-only ports.
+PostgreSQL retained its 256 MiB tmpfs. Including setup and cleanup, the recheck
+took 1290.76 seconds. Ownership-label queries found no remaining containers;
+the anonymous Qdrant volume was absent after cleanup. No existing data was used.
+
+The log is retained under
+`.superpowers/sdd/2026-10-09-postgres-zlib-candidate/` as
+`isolation-recheck-b1a3ffe4d22e49c19bcc71ff9a3ff71a.log`, SHA-256
+`64216f2233f4f16b14766f698f5d31c973ae64c2fe76f15740a881a92d97ad6d`.
+Exports remain under
+`data/candidate-compatibility/b1a3ffe4d22e49c19bcc71ff9a3ff71a/isolation/`.
+
+### Remaining compatibility checks
+
+The remaining 232 cases ran at clean source
+`83d4e97e33b0e9898b2cee658887f12e41e3fe93`. The diff from `cfb8ec7`
+contains only five Markdown files; application code, dependencies and tests
+are unchanged. Collection confirmed 259 cases. The harness deselected exactly
+the first 27 node IDs, through the focused isolation test above, to reuse the
+original 26 passes and its successful recheck.
+
+Pytest reported 225 passed, 7 skipped and 27 deselected in 4842.86 seconds,
+with exit 0. JUnit independently records 232 tests, zero failures, zero errors
+and seven skips. The run exercised DB-backed audits, ownership checks,
+authentication, tenant isolation, document lifecycle, retrieval and migrations.
+Model responses used fixtures.
+
+Four skips require explicit pinned embedding assets. These cover cost-report
+replay, revocation measurement, chat/timeout evaluation and the pinned-model
+pipeline. The other three require the candidate-image opt-in variable; their
+inventory, startup and compressed-dump checks already passed separately in
+46.12 seconds, as recorded in the candidate write-up.
+
+Across the original run, focused recheck and remainder, 252 cases passed and
+seven skipped. This is combined evidence, not one fresh 259-case pass. The
+candidate-image opt-in results are separate; real-model coverage remains open.
+
+Both services used owned anonymous disk volumes, 512 MiB and one CPU caps,
+and loopback-only ports. Including setup and cleanup, the harness took
+4884.21 seconds. Fresh ownership-label and volume queries confirmed that its
+two containers and two volumes were removed. No existing data was used.
+
+The saved harness is `check-remaining-compatibility.ps1` under
+`.superpowers/sdd/2026-10-09-postgres-zlib-candidate/`. It ran the DB/API/migration
+selection with `-vv --maxfail=1 --tb=short --junitxml`, adding `--deselect`
+for each reused node. Artifacts share lease `01c1db75baba4d52b75c658e413d2cbd`:
+
+- `compatibility-remainder-<lease>.log`, SHA-256
+  `fd8eebc1b5ba3e53ed656cde165caf74df8cc4ebc947e6879575b8f1c35837e0`.
+- `compatibility-remainder-<lease>.xml`, SHA-256
+  `2d3871ae65652b59c54e69e361ab14d8118750b9f9d2d00f7dab1411debf4689`.
+- `compatibility-manifest-<lease>.txt`, SHA-256
+  `ba28f0198a67fb4025db1a01daa3b50fb595204dd0b73d6fd0f2c36b15f6fdaa`.
+
+Compose and CI still selected the existing image during those checks.
+Container-security disposition, real-model measurements and release sign-off
+remain open. No push, merge, deployment or existing-data migration was performed.
+
+## Fresh-install patch promotion (9 October)
+
+At source `1d53b36` plus this change, Compose selects the tested PostgreSQL
+18.6/zlib and Qdrant 1.19.2/PCRE2 recipes. CI builds them after checkout,
+starts a fresh `ragelit-ci` project, enables the image checks and removes its
+containers and volumes after verification. Running services and existing data
+were not changed. This is not release sign-off.
+
+Three new contract cases failed against the old defaults before implementation.
+The final focused file passed 12 tests in 3.53 seconds. Ruff format/lint,
+strict focused mypy and Python compilation passed; LSP reported no diagnostics.
+Application code and dependency locks are unchanged, so the earlier compatibility
+results above were reused rather than repeating the full matrix.
+
+The disposable Compose smoke passed package-version checks, restricted
+`ragelit_app` initialization and a synthetic Qdrant vector roundtrip.
+All 18 principal/RLS tests passed in 23.74 seconds, including migrations,
+revocation and cross-tenant restrictions. JUnit records zero failures, errors
+or skips. Each service had a 512 MiB memory cap and half a CPU.
+Startup, checks and cleanup took 47.4 seconds. Independent ownership-label
+queries found no remaining test containers or volumes.
+
+The exact CI Compose build command also passed using cached package layers.
+The selected image filesystems and startup settings match the previously
+tested candidates. Earlier smoke attempts stopped in the PowerShell harness:
+Docker progress on stderr, APK descriptive output and Debian's architecture
+suffix required corrections. Those failed logs remain available; none reached
+the application tests or used existing data.
+
+Evidence is retained under
+`.superpowers/sdd/2026-10-09-postgres-zlib-candidate/`:
+
+- `compose-promotion-smoke-passed.log`, SHA-256
+  `e1b8cb777a394a9a2cc2d2b0be7c878ad1c3260956c7f48219b4dfdbe9e101a0`.
+- `compose-promotion-smoke.xml`, SHA-256
+  `2d9775a5965112f97227f16792435085a414da1c6947c2ec6fdb53838fa63dab`.
+
+The fresh-install/CI configuration is verified locally. No new whole-image scan
+or hosted CI run was performed. Remaining container findings, real-model
+measurements and release sign-off stay open. Nothing was pushed or merged.
+
+## CI Docker-output correction (9 October)
+
+[PR #28's first CI run](https://github.com/HuzaifaAbdulRehman/ragelit/actions/runs/37961257454)
+passed 788 unit tests and its security job. Integration reported 259 passed,
+one failed and four skipped in 1016.98 seconds. The failed Qdrant inventory
+check treated Docker's cold-pull progress as part of the container ID because
+the helper merged stderr into stdout. Browser checks and artifact uploads were
+not reached; Compose cleanup passed.
+
+Both candidate-image helpers now return stdout alone. Startup-failure log
+collection explicitly includes stderr, and failed commands retain stderr in
+their exception. The existing 60-second timeout and ownership checks remain.
+
+Six real-child-process regressions cover both helpers. The four original
+stream/error cases failed before the fix; two further cases exposed the missing
+log-diagnostic path before it was added. At source `0eae51c` plus this change,
+the final focused run passed all 14 tests in 55.53 seconds: six regressions and
+eight candidate-image checks, with no skips or failures. The existing Qdrant
+SDK version warning remained visible.
+
+Ruff format/lint, focused strict mypy, Python compilation and LSP diagnostics
+passed. Read-only review found no remaining issues. Fresh label queries found
+no candidate containers. No existing data, application code, image recipe or
+dependency lock was changed.
+
+Evidence remains under
+`.superpowers/sdd/2026-10-09-postgres-zlib-candidate/`:
+
+- `docker-output-final.log`, SHA-256
+  `f937ca259d1e969b24266d614689a63d62d50bc925f2621bf5a2ba6435bd60f7`.
+- `docker-output-final.xml`, SHA-256
+  `8958eaaa19988ad378137e73a931b56172e32d6b724feb9a8e7e827a00982c4e`.
+
+The failed runs and regression logs are retained. The full hosted CI rerun is
+pending; remaining container findings and real-model release gates stay open.
