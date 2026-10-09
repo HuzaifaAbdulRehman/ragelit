@@ -339,9 +339,13 @@ opt-in checks passed separately. This does not close container disposition or
 the real-model benchmark gate. Those checks left Compose and CI unchanged.
 
 The later [fresh-install promotion](../../verification/2026-10-07-local-release-checkpoint.md#fresh-install-patch-promotion-9-october)
-selects both tested library-patch recipes in Compose and CI. Local contract and
-disposable tenant-isolation checks pass; hosted CI is pending. Existing data
-and the remaining release gates are unchanged.
+selects both tested library-patch recipes in Compose and CI.
+[PR #28 is merged](https://github.com/HuzaifaAbdulRehman/ragelit/pull/28);
+its full hosted CI passed 794 unit tests, 260 integration tests with four skips,
+and 57 browser journeys. All validated audit export sets uploaded.
+The [merge checkpoint](../../verification/2026-10-07-local-release-checkpoint.md#merged-patch-defaults-and-hosted-ci-9-october)
+records the source, run links and remaining gates. Existing data has not been
+migrated. Container disposition and real-model measurements remain open.
 
 Gate: v0.1 starts from a clean clone, runs its audit without private services,
 and reproduces every number used in public prose.
