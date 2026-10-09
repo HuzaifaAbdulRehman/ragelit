@@ -45,8 +45,11 @@ On 9 October, the [gosu release page](https://github.com/tianon/gosu/releases/ta
 still identified 1.19 as the latest release, built with Go 1.24.6. Its
 [security policy](https://github.com/tianon/gosu/blob/1.19/SECURITY.md) calls for
 `govulncheck` reachability analysis rather than rebuilding for unused Go APIs.
-That analysis has not been run on the inspected binary. The maintainer policy
-does not, by itself, clear the 23 scanner findings or approve a release exception.
+A [binary-symbol scan](2026-10-09-gosu-symbol-review.md) now covers gosu in the
+exact PostgreSQL candidate. It detected no vulnerable symbols for the 23 Scout
+Go CVEs, but retained three package-level warnings across its full report.
+Neither this evidence nor the maintainer policy clears the image or approves
+a release exception.
 
 ## Disposable 1.19.2 compatibility check
 
