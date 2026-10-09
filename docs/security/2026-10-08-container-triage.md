@@ -86,9 +86,11 @@ The log is retained under
 `.superpowers/sdd/2026-10-09-postgres-zlib-candidate/` as
 `pcre2-availability-2949ca308a4545c5a5d4ddfdd9403246.log`, SHA-256
 `9db19ad9ecb04ed7c76eb72cc5a4083f268fc66298ce1257ac750c72a999e4b5`.
-The next proposed change is a local, pinned single-package candidate with
-inventory, startup and basic vector read/write checks. It is not built or
-selected by Compose/CI yet; bounded-design approval is pending.
+The user then approved a local, pinned single-package candidate. The
+[PCRE2 candidate](2026-10-09-qdrant-pcre2-candidate.md) now passes inventory,
+startup, binary/UI and basic vector read/write checks. Its scan no longer
+reports the PCRE2 finding. It is not selected by Compose/CI or deployed;
+remaining findings and release gates are still open.
 
 The refreshed [Alpine v3.24 feed](https://secdb.alpinelinux.org/v3.24/main.json)
 still lists zlib `1.3.2-r1` for CVE-2026-85091, but has no libxml2 fix entry for
