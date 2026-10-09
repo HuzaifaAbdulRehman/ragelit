@@ -127,8 +127,24 @@ def test_foreign_collection_storage_cannot_enter_owned_total() -> None:
 
 
 @pytest.mark.parametrize("port", ["6333", "9999"])
+@pytest.mark.parametrize(
+    ("image", "version", "allowed"),
+    [
+        ("qdrant/qdrant:v1.15.4", "1.15.4", True),
+        ("qdrant/qdrant:v1.19.2", "1.19.2", True),
+        ("ragelit-qdrant:v1.19.2-pcre2-10.46-deb13u3", "1.19.2", True),
+        ("ragelit-qdrant:v1.19.2-pcre2-10.46-deb13u3", "1.19.1", False),
+        ("qdrant/qdrant:v1.19.2", "1.19.1", False),
+        ("ragelit-qdrant:v1.19.2-unverified", "1.19.2", False),
+        ("other/qdrant:v1.19.2", "1.19.2", False),
+    ],
+)
 def test_disk_probe_checks_service_identity_and_uses_exact_argv(
-    port: str, monkeypatch: pytest.MonkeyPatch
+    port: str,
+    image: str,
+    version: str,
+    allowed: bool,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from app.evaluation import costs
 
@@ -146,7 +162,7 @@ def test_disk_probe_checks_service_identity_and_uses_exact_argv(
                 json.dumps(
                     {
                         "id": "a" * 64,
-                        "image": "qdrant/qdrant:v1.15.4",
+                        "image": image,
                         "ports": {
                             "6333/tcp": [{"HostIp": "127.0.0.1", "HostPort": port}]
                         },
@@ -179,11 +195,11 @@ def test_disk_probe_checks_service_identity_and_uses_exact_argv(
             ),
             store=SimpleNamespace(
                 collection_names=lambda: ("ragelit_audit_cost",),
-                client=SimpleNamespace(info=lambda: SimpleNamespace(version="1.15.4")),
+                client=SimpleNamespace(info=lambda: SimpleNamespace(version=version)),
             ),
         ),
     )
-    if port == "9999":
+    if port == "9999" or not allowed:
         with pytest.raises(ValueError):
             costs.read_collection_disks(workspace, container="owned-qdrant")
         assert len(calls) == 1
