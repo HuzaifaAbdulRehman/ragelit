@@ -24,6 +24,28 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: Diagnose public Docker endpoint connectivity
+        id: dockerhub_probe
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          for endpoint in https://auth.docker.io/ https://registry-1.docker.io/v2/; do
+            for mode in default ipv4; do
+              address_options=()
+              if [[ "$mode" == ipv4 ]]; then
+                address_options=(--ipv4)
+              fi
+              printf '%s %s: ' "$endpoint" "$mode"
+              if curl --disable --silent --show-error --output /dev/null \
+                --connect-timeout 5 --max-time 10 \
+                --write-out 'HTTP %{http_code}, DNS %{time_namelookup}s, connect %{time_connect}s, total %{time_total}s\n' \
+                "${address_options[@]}" "$endpoint"; then
+                :
+              else
+                printf 'probe exit=%s\n' "$?"
+              fi
+            done
+          done
       - name: Authenticate Docker Hub pulls
         id: dockerhub
         shell: bash
