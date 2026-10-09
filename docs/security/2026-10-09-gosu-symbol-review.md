@@ -26,11 +26,20 @@ detected vulnerable symbol.
 
 The three package warnings remain visible:
 
-| Go advisory | CVE | Package |
-| --- | --- | --- |
-| [GO-2026-4602](https://pkg.go.dev/vuln/GO-2026-4602) | CVE-2026-27139 | os |
-| [GO-2026-4864](https://pkg.go.dev/vuln/GO-2026-4864) | CVE-2026-32282 | internal/syscall/unix |
-| [GO-2026-4970](https://pkg.go.dev/vuln/GO-2026-4970) | CVE-2026-39822 | os |
+| Go advisory | CVE | Package | Required behavior |
+| --- | --- | --- | --- |
+| [GO-2026-4602](https://pkg.go.dev/vuln/GO-2026-4602) | CVE-2026-27139 | os | Directory enumeration on a file opened within an os.Root can expose metadata outside that root. |
+| [GO-2026-4864](https://pkg.go.dev/vuln/GO-2026-4864) | CVE-2026-32282 | internal/syscall/unix | A symlink replacement race during Root.Chmod can change permissions outside the root. |
+| [GO-2026-4970](https://pkg.go.dev/vuln/GO-2026-4970) | CVE-2026-39822 | os | Root-based file opening follows a final symlink when the path ends in a slash. |
+
+These prerequisites come from the official Go advisories, rechecked on
+9 October. Gosu 1.19's reviewed
+[main](https://raw.githubusercontent.com/tianon/gosu/1.19/main.go) and
+[user-switch implementation](https://raw.githubusercontent.com/tianon/gosu/1.19/setup-user.go)
+contain no Root or directory-enumeration calls. That supports the scoped
+no-identified-path assessment; it is not a transitive source call-graph proof.
+The package warnings remain recorded. No rebuild, rescan or suppression was
+used to change their status.
 
 The full report is retained in ignored local storage under
 `.superpowers/sdd/2026-10-09-postgres-zlib-candidate/govulncheck/`,

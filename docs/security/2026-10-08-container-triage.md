@@ -70,6 +70,41 @@ Running services and existing volumes were not changed. The [operator warning](.
 
 Prioritize the linked runtime libraries, then review build-inventory findings against each advisory's prerequisites. Do not replace missing reachability evidence with a blanket scanner exclusion or call these images production-cleared.
 
+## Fix availability recheck (9 October)
+
+At clean source `415f1b7`, a disposable container checked signed Debian indexes
+for the exact Qdrant 1.19.2 image above. The probe, including cleanup,
+exited 0 in 24.63 seconds.
+It would upgrade only `libpcre2-8-0` from `10.46-1~deb13u2` to
+`10.46-1~deb13u3`, with no additions or removals. This matches the
+[Debian fix](https://security-tracker.debian.org/tracker/CVE-2026-103111).
+No package was installed. The container had a read-only root filesystem,
+128 MiB RAM and half a CPU, temporary package-index storage, no published ports
+and no existing data mounts. It was removed, and a fresh label query found none.
+
+The log is retained under
+`.superpowers/sdd/2026-10-09-postgres-zlib-candidate/` as
+`pcre2-availability-2949ca308a4545c5a5d4ddfdd9403246.log`, SHA-256
+`9db19ad9ecb04ed7c76eb72cc5a4083f268fc66298ce1257ac750c72a999e4b5`.
+The next proposed change is a local, pinned single-package candidate with
+inventory, startup and basic vector read/write checks. It is not built or
+selected by Compose/CI yet; bounded-design approval is pending.
+
+The refreshed [Alpine v3.24 feed](https://secdb.alpinelinux.org/v3.24/main.json)
+still lists zlib `1.3.2-r1` for CVE-2026-85091, but has no libxml2 fix entry for
+CVE-2026-86140. Its saved snapshot `alpine-v3.24-security-refresh.json` has
+SHA-256 `715e2255b2022ce2ed976ede172cf7eb519ba5ce6dcd2dbddaf3049b2473431d`.
+An absent feed entry does not establish that every available package is unfixed.
+
+Qdrant's configured repositories offer no newer zlib candidate. The
+[Debian tracker](https://security-tracker.debian.org/tracker/CVE-2026-85091)
+still marks its release vulnerable. The
+[upstream discussion](https://github.com/madler/zlib/issues/1310)
+disputes the affected range; the issue author also reports that the supplied
+PoC can trigger behavior before the named range. Neither observation settles
+the installed package's classification. Keep it open, without suppression.
+No exploit PoC or new whole-image scan was run.
+
 ## Reproduce the scoped scan
 
 ```powershell
