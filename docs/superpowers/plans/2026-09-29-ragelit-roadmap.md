@@ -295,8 +295,12 @@ replace the real-model benchmark.
 - [x] Test malformed uploads, oversized requests, concurrency, restart recovery,
   and provider timeouts.
 - [x] Run setup and the demo from a clean Windows clone and a Linux CI runner.
-- [ ] Verify tracked files, license notices, migrations, example configuration,
+- [x] Verify tracked files, license notices, migrations, example configuration,
   and absence of secrets.
+
+The [9 October file review](../../verification/2026-10-07-local-release-checkpoint.md#release-file-review-9-october)
+records the reference commits, preserved license text, unchanged migration and
+configuration baseline, and clean redacted branch-history scan.
 
 The [9 October coverage audit](../../verification/2026-10-07-local-release-checkpoint.md#hardening-coverage-audit-9-october)
 maps existing malformed-upload, size-limit, concurrency and timeout assertions

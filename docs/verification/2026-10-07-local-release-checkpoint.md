@@ -312,7 +312,8 @@ success. No unchanged suite was rerun for this audit.
 | Provider timeouts | `test_transport_timeout_has_stable_timeout_code` in `backend/tests/unit/chat/test_provider.py` checks HTTP 504, the stable error code and redaction of transport details. | Injected transport timeout, not successful real-model generation. |
 
 The combined hardening checkbox is now complete for the tested synthetic cases.
-The PostgreSQL candidate still needs application compatibility evidence.
+The candidate audit checks below add focused compatibility evidence;
+the full candidate suite remains unfinished.
 Container disposition and the full real-model measurement matrix remain separate
 release requirements.
 
@@ -332,3 +333,68 @@ a half-CPU limit, and was removed after the test.
 
 Ruff lint and format checks and focused mypy passed. The source was
 13ae31c with the new restart test; this was not a full candidate-image gate.
+
+## Release-file review (9 October)
+
+At source `cfb8ec7`, all six local reference clones matched their recorded
+commits. The MIT license block in `THIRD_PARTY_NOTICES.md` matched the FastAPI
+template's original text. The notice lists the adapted files and separately
+records the downloaded benchmark assets.
+
+No reference clones, local data, model weights or local environment files are tracked.
+The seven migrations, runtime settings, example configuration and notices are
+unchanged from passing main `e646524`. Their existing migration and repository
+contract checks are part of that recorded CI result; they were not rerun for
+this file review. The example uses local development credentials, leaves
+generation disabled, and matches the implemented settings. Production settings
+reject the placeholder secret and insecure cookies.
+
+A redacted Gitleaks scan of `e646524..cfb8ec7` covered four commits and about
+21.20 KB, exited 0 and found no leaks. Its empty JSON report is retained in
+ignored local storage as `release-secrets-cfb8ec7.json`, SHA-256
+`37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570`.
+This closes the tracked-file review checkbox, not container-security or
+real-model release requirements.
+
+## Candidate application audit checks (9 October)
+
+Clean source `cfb8ec7` was tested against the exact PostgreSQL zlib candidate
+and Qdrant 1.19.2 image recorded in the candidate write-up, with fixture
+embeddings and generation rather than a real language model.
+
+The initial DB/API/migration run stopped with 26 passed and one failed in
+3712.28 seconds. Two isolation strategies had completed; the lab strategy
+failed during its first document ingestion. A five-collection probe reproduced
+Qdrant's error: "No space left on device: WAL buffer size exceeds available
+disk space". The 256 MiB tmpfs could not allocate the fifth collection's WAL
+buffer. No application source was changed.
+
+Replacing only Qdrant's temporary storage with an owned anonymous disk volume
+passed the same five-collection probe. The focused recheck then passed:
+
+```console
+uv run --frozen pytest tests/integration/audits/test_isolation_cli.py::test_real_cli_exports_three_fresh_workspace_strategies -q --maxfail=1 --tb=short
+```
+
+One test passed in 1241.46 seconds. Each strategy completed all 51 cases:
+shared pre-filter and tenant collections exited 0; lab post-filter exited 1
+as expected. The native isolation reader validated the three reports and
+receipts. Native readers also validated the saved access and injection exports;
+those audits were not repeated.
+
+Both services had 512 MiB and one CPU caps with loopback-only ports.
+PostgreSQL retained its 256 MiB tmpfs. Including setup and cleanup, the recheck
+took 1290.76 seconds. Ownership-label queries found no remaining containers;
+the anonymous Qdrant volume was absent after cleanup. No existing data was used.
+
+The log is retained under
+`.superpowers/sdd/2026-10-09-postgres-zlib-candidate/` as
+`isolation-recheck-b1a3ffe4d22e49c19bcc71ff9a3ff71a.log`, SHA-256
+`64216f2233f4f16b14766f698f5d31c973ae64c2fe76f15740a881a92d97ad6d`.
+Exports remain under
+`data/candidate-compatibility/b1a3ffe4d22e49c19bcc71ff9a3ff71a/isolation/`.
+
+This is not a full compatibility-suite pass. Collection found 259 cases;
+232 after the original failure remain unexecuted against this candidate.
+The unchanged main CI evidence is separate. Container-security disposition,
+real-model measurements and release sign-off remain open.

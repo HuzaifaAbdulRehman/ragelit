@@ -63,9 +63,25 @@ report. The report and scan log remain in ignored local storage under
 `.superpowers/sdd/2026-10-09-postgres-zlib-candidate/`. The report SHA-256 is
 `503b6b3975b4b5a0dfa6da01dc235086f6b7f4aac385843ce7c89af8257d9358`.
 
+## Application audit checks
+
+At clean source `cfb8ec7`, 26 DB-backed tests passed before an isolation setup
+failure. A tiny probe reproduced exhaustion of Qdrant's 256 MiB temporary
+storage at the fifth collection. Switching the owned Qdrant service to
+disposable disk-backed storage required no application code change.
+
+The focused three-strategy isolation test then passed in 1241.46 seconds.
+Each strategy completed 51 cases, with expected exits 0, 0 and 1. Native readers
+validated its reports and the original access/injection exports. All owned
+test services and the anonymous disk volume were removed.
+
+The [local checkpoint](../verification/2026-10-07-local-release-checkpoint.md#candidate-application-audit-checks-9-october)
+records the command, source, storage limits and retained artifacts.
+The full 259-case candidate suite is not complete: 232 cases remain unexecuted.
+
 ## What this does not establish
 
-Compose and CI still select the existing PostgreSQL image. No service, existing
+Compose and CI still select the existing PostgreSQL image. No existing service,
 database or volume was started, restarted or migrated by these checks.
 The unchanged application baseline passes
 [main CI at e646524](https://github.com/HuzaifaAbdulRehman/ragelit/actions/runs/37821775490);
