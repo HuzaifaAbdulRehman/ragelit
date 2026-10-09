@@ -19,10 +19,11 @@ BASE_IMAGE = (
 LEASE_LABEL = "ragelit.qdrant-candidate-lease"
 
 
-def _docker(*args: str) -> str:
-    return subprocess.check_output(
-        ["docker", *args], text=True, stderr=subprocess.STDOUT, timeout=60
-    ).strip()
+def _docker(*args: str, include_stderr: bool = False) -> str:
+    completed = subprocess.run(
+        ["docker", *args], capture_output=True, text=True, timeout=60, check=True
+    )
+    return (completed.stdout + (completed.stderr if include_stderr else "")).strip()
 
 
 def _remove_owned(container: str, lease: str) -> None:
@@ -155,7 +156,8 @@ def candidate_client(candidate_image: str) -> Iterator[QdrantClient]:
         port = state["NetworkSettings"]["Ports"]["6333/tcp"][0]["HostPort"]
         url = f"http://127.0.0.1:{port}"
         if not _wait_ready(url):
-            pytest.fail(f"candidate startup timed out: {_docker('logs', container)}")
+            logs = _docker("logs", container, include_stderr=True)
+            pytest.fail(f"candidate startup timed out: {logs}")
         client = QdrantClient(url=url, timeout=10, trust_env=False)
         try:
             yield client

@@ -14,10 +14,11 @@ BASE_IMAGE = (
 LEASE_LABEL = "ragelit.postgres-candidate-lease"
 
 
-def _docker(*args: str) -> str:
-    return subprocess.check_output(
-        ["docker", *args], text=True, stderr=subprocess.STDOUT, timeout=60
-    ).strip()
+def _docker(*args: str, include_stderr: bool = False) -> str:
+    completed = subprocess.run(
+        ["docker", *args], capture_output=True, text=True, timeout=60, check=True
+    )
+    return (completed.stdout + (completed.stderr if include_stderr else "")).strip()
 
 
 @pytest.fixture(scope="module")
@@ -116,7 +117,8 @@ def candidate_database(candidate_image: str) -> Iterator[str]:
                 yield container
                 return
             time.sleep(0.25)
-        pytest.fail(f"candidate startup timed out: {_docker('logs', container)}")
+        logs = _docker("logs", container, include_stderr=True)
+        pytest.fail(f"candidate startup timed out: {logs}")
     finally:
         owner = _docker(
             "inspect",

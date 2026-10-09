@@ -480,3 +480,39 @@ Evidence is retained under
 The fresh-install/CI configuration is verified locally. No new whole-image scan
 or hosted CI run was performed. Remaining container findings, real-model
 measurements and release sign-off stay open. Nothing was pushed or merged.
+
+## CI Docker-output correction (9 October)
+
+[PR #28's first CI run](https://github.com/HuzaifaAbdulRehman/ragelit/actions/runs/37961257454)
+passed 788 unit tests and its security job. Integration reported 259 passed,
+one failed and four skipped in 1016.98 seconds. The failed Qdrant inventory
+check treated Docker's cold-pull progress as part of the container ID because
+the helper merged stderr into stdout. Browser checks and artifact uploads were
+not reached; Compose cleanup passed.
+
+Both candidate-image helpers now return stdout alone. Startup-failure log
+collection explicitly includes stderr, and failed commands retain stderr in
+their exception. The existing 60-second timeout and ownership checks remain.
+
+Six real-child-process regressions cover both helpers. The four original
+stream/error cases failed before the fix; two further cases exposed the missing
+log-diagnostic path before it was added. At source `0eae51c` plus this change,
+the final focused run passed all 14 tests in 55.53 seconds: six regressions and
+eight candidate-image checks, with no skips or failures. The existing Qdrant
+SDK version warning remained visible.
+
+Ruff format/lint, focused strict mypy, Python compilation and LSP diagnostics
+passed. Read-only review found no remaining issues. Fresh label queries found
+no candidate containers. No existing data, application code, image recipe or
+dependency lock was changed.
+
+Evidence remains under
+`.superpowers/sdd/2026-10-09-postgres-zlib-candidate/`:
+
+- `docker-output-final.log`, SHA-256
+  `f937ca259d1e969b24266d614689a63d62d50bc925f2621bf5a2ba6435bd60f7`.
+- `docker-output-final.xml`, SHA-256
+  `8958eaaa19988ad378137e73a931b56172e32d6b724feb9a8e7e827a00982c4e`.
+
+The failed runs and regression logs are retained. The full hosted CI rerun is
+pending; remaining container findings and real-model release gates stay open.
