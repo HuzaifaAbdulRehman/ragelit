@@ -7,10 +7,12 @@ Upload documents, grant reading access, and ask questions with source citations
 in one web portal. RAGelit also runs synthetic audits through the application
 pipeline to show where unauthorized evidence appears or is blocked.
 
-Status: working development build. Release verification and real-model quality
-measurements are still incomplete; this is not a production security certification.
+Status: MVP preview in preparation, not a published release. Container-security
+findings and real-model quality measurements remain open. Evaluate locally with
+synthetic documents only; this is not cleared for production or confidential data.
 
 [Quick start](#quick-start) · [Operator reference](OPERATIONS.md) ·
+[Draft preview notes](docs/releases/v0.1.0-preview.1.md) ·
 [Security controls](docs/security/control-matrix.md) ·
 [Verification checkpoint](docs/verification/2026-10-07-local-release-checkpoint.md)
 
@@ -154,10 +156,13 @@ the dedicated `ragelit_e2e` database and collection. See the
 The [latest checkpoint](docs/verification/2026-10-07-local-release-checkpoint.md)
 records a clean Windows clone's complete 51-case safe audit, static checks,
 frontend build and original report validation. The complete
-[Linux CI run at 44a70aa](https://github.com/HuzaifaAbdulRehman/ragelit/actions/runs/37809980310)
-also passed with Qdrant 1.19.2 and client 1.19.1: 786 unit tests,
-251 integration tests and 57 browser journeys,
-plus static, build, secret and locked-dependency checks.
+[PR #28 CI run](https://github.com/HuzaifaAbdulRehman/ragelit/actions/runs/37966718759)
+passed with the patched PostgreSQL and Qdrant defaults: 794 unit tests,
+260 integration tests with four model-dependent skips, and 57 browser journeys.
+Static, build, secret and locked-dependency checks passed, and all three
+validated audit export sets were uploaded. The merge at `1ac8deb` has the
+same tree as the tested PR head; its separate post-merge run is recorded in
+the checkpoint.
 
 The same checkpoint records 57 passing Playwright journeys, a fresh three-profile
 deterministic injection export, and a three-strategy deterministic isolation
