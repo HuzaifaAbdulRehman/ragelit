@@ -50,6 +50,8 @@ mockups are shown.
 | ![Login page with empty email and password fields](docs/screenshots/login.png) | ![Northstar Labs workspace showing the owner role and active session](docs/screenshots/workspace-overview.png) |
 | Sign in to a specific organization. | See the current workspace and management role. |
 
+Expand the sections below to see all 10 screenshots.
+
 <details>
 <summary>Documents and reading permissions</summary>
 
